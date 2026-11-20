@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +16,7 @@ const Tab = createBottomTabNavigator<TeacherTabParamList>();
 const Stack = createNativeStackNavigator<TeacherStackParamList>();
 
 const TeacherTabs: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   return (
     <Tab.Navigator
@@ -27,9 +28,20 @@ const TeacherTabs: React.FC = () => {
           height: 60,
           paddingBottom: 8,
           paddingTop: 6,
+          ...Platform.select({
+            web: {
+              boxShadow: isDark
+                ? '0 -2px 10px rgba(0, 0, 0, 0.4)'
+                : '0 -2px 10px rgba(15, 23, 42, 0.05)',
+            } as any,
+          }),
         },
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+        },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
@@ -106,4 +118,3 @@ export const TeacherNavigator: React.FC = () => {
     </Stack.Navigator>
   );
 };
-

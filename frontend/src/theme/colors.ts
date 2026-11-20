@@ -6,7 +6,9 @@ export interface ColorTheme {
   textSecondary: string;
   textMuted: string;
   border: string;
+  borderFocus: string;
   primary: string;
+  primaryHover: string;
   primaryLight: string;
   secondary: string;
   accent: string;
@@ -32,7 +34,9 @@ export const lightColors: ColorTheme = {
   textSecondary: '#475569',
   textMuted: '#94a3b8',
   border: '#e2e8f0',
+  borderFocus: '#4f46e5',
   primary: '#4f46e5',
+  primaryHover: '#4338ca',
   primaryLight: '#eef2ff',
   secondary: '#0ea5e9',
   accent: '#8b5cf6',
@@ -58,8 +62,10 @@ export const darkColors: ColorTheme = {
   textSecondary: '#cbd5e1',
   textMuted: '#64748b',
   border: '#334155',
+  borderFocus: '#818cf8',
   primary: '#6366f1',
-  primaryLight: '#312e81',
+  primaryHover: '#4f46e5',
+  primaryLight: '#1e1b4b',
   secondary: '#38bdf8',
   accent: '#a78bfa',
   success: '#34d399',
@@ -75,4 +81,3 @@ export const darkColors: ColorTheme = {
   placeholder: '#64748b',
   statusBar: 'light',
 };
-

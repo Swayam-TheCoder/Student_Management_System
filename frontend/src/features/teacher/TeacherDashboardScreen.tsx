@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -41,11 +42,9 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardProps> = ({ naviga
 
   const loadData = useCallback(async () => {
     try {
-      // 1. Get total students count
       const studentsRes = await studentApi.getStudents(undefined, 0, 1);
       setTotalStudentsCount(studentsRes.totalElements);
 
-      // 2. Get top 3 students preview
       const lbRes = await leaderboardApi.getLeaderboard(0, 3);
       setTopStudents(lbRes.content);
     } catch (e) {
@@ -64,9 +63,10 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardProps> = ({ naviga
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={960}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -79,7 +79,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardProps> = ({ naviga
         <View style={styles.header}>
           <View>
             <Text style={[styles.greetingText, { color: theme.textSecondary }]}>
-              Faculty Dashboard
+              Faculty & Staff Dashboard
             </Text>
             <Text style={[styles.userName, { color: theme.text }]}>
               {user?.firstName} {user?.lastName}
@@ -109,13 +109,16 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardProps> = ({ naviga
             <View style={styles.ctaTextContainer}>
               <Text style={styles.ctaTitle}>Point Allocation & Adjustment</Text>
               <Text style={styles.ctaSub}>
-                Recognize academic excellence or adjust disciplinary scores
+                Recognize academic excellence, classroom conduct, or apply disciplinary adjustments
               </Text>
             </View>
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={() => navigation.navigate('AwardPoints')}
-              style={styles.ctaButton}
+              style={[
+                styles.ctaButton,
+                Platform.select({ web: { cursor: 'pointer' } as any }),
+              ]}
             >
               <Ionicons name="add-circle" size={18} color="#4338ca" />
               <Text style={styles.ctaButtonText}>Award Points</Text>
@@ -123,7 +126,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardProps> = ({ naviga
           </View>
         </Card>
 
-        {/* Stats Grid */}
+        {/* Stats Grid (Equal Flex & Gap) */}
         <View style={styles.statsGrid}>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -131,10 +134,11 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardProps> = ({ naviga
             style={[
               styles.statCard,
               { backgroundColor: theme.card, borderColor: theme.border },
+              Platform.select({ web: { cursor: 'pointer' } as any }),
             ]}
           >
             <View style={[styles.statIconBox, { backgroundColor: theme.primaryLight }]}>
-              <Ionicons name="people" size={24} color={theme.primary} />
+              <Ionicons name="people" size={22} color={theme.primary} />
             </View>
             <Text style={[styles.statValue, { color: theme.text }]}>
               {totalStudentsCount}
@@ -150,16 +154,17 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardProps> = ({ naviga
             style={[
               styles.statCard,
               { backgroundColor: theme.card, borderColor: theme.border },
+              Platform.select({ web: { cursor: 'pointer' } as any }),
             ]}
           >
             <View style={[styles.statIconBox, { backgroundColor: theme.warningLight }]}>
-              <Ionicons name="trophy" size={24} color={theme.warning} />
+              <Ionicons name="trophy" size={22} color={theme.warning} />
             </View>
             <Text style={[styles.statValue, { color: theme.text }]}>
-              {topStudents.length > 0 ? `${topStudents[0].totalPoints} pts` : '0'}
+              {topStudents.length > 0 ? `${topStudents[0].totalPoints} pts` : '0 pts'}
             </Text>
             <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Top Score
+              Top Student Score
             </Text>
           </TouchableOpacity>
         </View>
@@ -167,7 +172,10 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardProps> = ({ naviga
         {/* Top Students Preview */}
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Top Achievers</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Leaderboard')}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Leaderboard')}
+            style={Platform.select({ web: { cursor: 'pointer' } as any })}
+          >
             <Text style={[styles.sectionActionText, { color: theme.primary }]}>
               View Leaderboard
             </Text>
@@ -207,6 +215,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+    width: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -235,7 +244,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaCard: {
-    padding: spacing.lg,
+    padding: spacing.xl,
     borderRadius: spacing.borderRadius.xl,
     marginBottom: spacing.lg,
   },
@@ -243,10 +252,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
   },
   ctaTextContainer: {
     flex: 1,
-    paddingRight: spacing.md,
+    minWidth: 200,
   },
   ctaTitle: {
     color: '#ffffff',
@@ -257,37 +268,39 @@ const styles = StyleSheet.create({
   ctaSub: {
     color: '#cbd5e1',
     fontSize: typography.sizes.xs,
-    lineHeight: 16,
+    lineHeight: 18,
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 10,
     borderRadius: spacing.borderRadius.full,
+    alignSelf: 'flex-start',
   },
   ctaButtonText: {
     color: '#4338ca',
     fontWeight: typography.weights.bold,
     fontSize: typography.sizes.xs,
-    marginLeft: 4,
+    marginLeft: 6,
   },
   statsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
     marginBottom: spacing.lg,
+    width: '100%',
   },
   statCard: {
-    flex: 0.48,
+    flex: 1,
     padding: spacing.md,
     borderRadius: spacing.borderRadius.lg,
     borderWidth: 1,
   },
   statIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
@@ -336,6 +349,7 @@ const styles = StyleSheet.create({
   },
   studentInfo: {
     flex: 1,
+    marginRight: spacing.sm,
   },
   studentName: {
     fontSize: typography.sizes.sm,
@@ -346,4 +360,3 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
-

@@ -42,7 +42,7 @@ export const LeaderboardScreen: React.FC = () => {
   const currentStudentId = studentProfile?.id;
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={800}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>Academic Leaderboard</Text>
@@ -104,6 +104,7 @@ export const LeaderboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
   },
   header: {
     paddingHorizontal: spacing.md,
@@ -132,4 +133,3 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-

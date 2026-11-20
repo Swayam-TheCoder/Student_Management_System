@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -44,7 +45,7 @@ export const Button: React.FC<ButtonProps> = ({
     backgroundColor = theme.surface;
     textColor = theme.text;
     borderColor = theme.border;
-    borderWidth = 1;
+    borderWidth = 1.2;
   } else if (variant === 'danger') {
     backgroundColor = theme.danger;
     textColor = '#ffffff';
@@ -58,9 +59,14 @@ export const Button: React.FC<ButtonProps> = ({
     textColor = theme.textSecondary;
   }
 
-  const paddingVertical = size === 'sm' ? 8 : size === 'lg' ? 16 : 12;
+  const height = size === 'sm' ? 36 : size === 'lg' ? 52 : 46;
   const paddingHorizontal = size === 'sm' ? 12 : size === 'lg' ? 24 : 16;
-  const fontSize = size === 'sm' ? typography.sizes.sm : size === 'lg' ? typography.sizes.lg : typography.sizes.md;
+  const fontSize =
+    size === 'sm'
+      ? typography.sizes.xs
+      : size === 'lg'
+        ? typography.sizes.lg
+        : typography.sizes.sm;
 
   const isDisabled = disabled || loading;
 
@@ -75,10 +81,16 @@ export const Button: React.FC<ButtonProps> = ({
           backgroundColor,
           borderColor,
           borderWidth,
-          paddingVertical,
+          height,
           paddingHorizontal,
           opacity: isDisabled ? 0.6 : 1,
         },
+        Platform.select({
+          web: {
+            cursor: isDisabled ? 'not-allowed' : 'pointer',
+            userSelect: 'none',
+          } as any,
+        }),
         style,
       ]}
     >
@@ -116,6 +128,6 @@ const styles = StyleSheet.create({
   text: {
     fontWeight: typography.weights.semibold,
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
 });
-

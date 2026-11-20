@@ -76,7 +76,7 @@ export const PointHistoryScreen: React.FC = () => {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={860}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>Point Transaction History</Text>
@@ -128,6 +128,7 @@ export const PointHistoryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
   },
   header: {
     paddingHorizontal: spacing.md,
@@ -156,4 +157,3 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-

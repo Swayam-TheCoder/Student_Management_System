@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -18,6 +19,7 @@ interface InputProps extends TextInputProps {
   isPassword?: boolean;
   leftIcon?: React.ReactNode;
   containerStyle?: ViewStyle;
+  inputWrapperStyle?: ViewStyle;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -26,6 +28,7 @@ export const Input: React.FC<InputProps> = ({
   isPassword = false,
   leftIcon,
   containerStyle,
+  inputWrapperStyle,
   style,
   ...rest
 }) => {
@@ -36,16 +39,17 @@ export const Input: React.FC<InputProps> = ({
   const borderColor = error
     ? theme.danger
     : isFocused
-      ? theme.primary
+      ? theme.borderFocus
       : theme.border;
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && (
+      {label ? (
         <Text style={[styles.label, { color: theme.textSecondary }]}>
           {label}
         </Text>
-      )}
+      ) : null}
+
       <View
         style={[
           styles.inputWrapper,
@@ -53,9 +57,13 @@ export const Input: React.FC<InputProps> = ({
             backgroundColor: theme.inputBackground,
             borderColor,
           },
+          isFocused && styles.inputWrapperFocused,
+          error ? styles.inputWrapperError : null,
+          inputWrapperStyle,
         ]}
       >
-        {leftIcon && <View style={styles.leftIconContainer}>{leftIcon}</View>}
+        {leftIcon ? <View style={styles.leftIconContainer}>{leftIcon}</View> : null}
+
         <TextInput
           placeholderTextColor={theme.placeholder}
           secureTextEntry={isPassword && !showPassword}
@@ -66,15 +74,23 @@ export const Input: React.FC<InputProps> = ({
             {
               color: theme.text,
             },
+            Platform.select({
+              web: {
+                outlineStyle: 'none',
+                outlineWidth: 0,
+              } as any,
+            }),
             style,
           ]}
           {...rest}
         />
-        {isPassword && (
+
+        {isPassword ? (
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setShowPassword(!showPassword)}
             style={styles.eyeIcon}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -82,9 +98,12 @@ export const Input: React.FC<InputProps> = ({
               color={theme.textMuted}
             />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
-      {error && <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text>}
+
+      {error ? (
+        <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text>
+      ) : null}
     </View>
   );
 };
@@ -92,11 +111,13 @@ export const Input: React.FC<InputProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.md,
+    width: '100%',
   },
   label: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
-    marginBottom: spacing.xs,
+    marginBottom: 6,
+    letterSpacing: 0.1,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -106,21 +127,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     height: 48,
   },
+  inputWrapperFocused: {
+    borderWidth: 1.5,
+  },
+  inputWrapperError: {
+    borderWidth: 1.5,
+  },
   leftIconContainer: {
     marginRight: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 24,
   },
   input: {
     flex: 1,
     fontSize: typography.sizes.md,
     height: '100%',
+    paddingVertical: 0,
   },
   eyeIcon: {
-    padding: spacing.xs,
+    paddingLeft: spacing.sm,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer' as any,
+      },
+    }),
   },
   errorText: {
     fontSize: typography.sizes.xs,
-    marginTop: spacing.xs,
+    marginTop: 5,
     fontWeight: typography.weights.medium,
   },
 });
-

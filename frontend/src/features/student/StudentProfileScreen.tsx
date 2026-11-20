@@ -21,12 +21,15 @@ export const StudentProfileScreen: React.FC = () => {
   };
 
   return (
-    <ScreenContainer>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScreenContainer maxWidth={640}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header Avatar Card */}
         <Card style={styles.profileHeaderCard}>
           <View style={[styles.avatarLarge, { backgroundColor: theme.primaryLight }]}>
-            <Ionicons name="person" size={54} color={theme.primary} />
+            <Ionicons name="person" size={52} color={theme.primary} />
           </View>
           <Text style={[styles.userName, { color: theme.text }]}>
             {user?.firstName} {user?.lastName}
@@ -36,7 +39,6 @@ export const StudentProfileScreen: React.FC = () => {
           </Text>
           <View style={styles.badgeRow}>
             <Badge label="STUDENT" variant="primary" size="sm" />
-            <View style={{ width: spacing.sm }} />
             <Badge label="Active Enrollment" variant="success" size="sm" />
           </View>
         </Card>
@@ -76,7 +78,12 @@ export const StudentProfileScreen: React.FC = () => {
                 Total Point Balance
               </Text>
             </View>
-            <Text style={[styles.detailValue, { color: theme.primary, fontWeight: typography.weights.bold }]}>
+            <Text
+              style={[
+                styles.detailValue,
+                { color: theme.primary, fontWeight: typography.weights.bold },
+              ]}
+            >
               {studentProfile?.totalPoints ?? 0} pts
             </Text>
           </View>
@@ -111,15 +118,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+    width: '100%',
   },
   profileHeaderCard: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
   },
   avatarLarge: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -135,6 +143,7 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     flexDirection: 'row',
+    gap: 8,
   },
   cardTitle: {
     fontSize: typography.sizes.md,
@@ -145,7 +154,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: 12,
     borderBottomWidth: 0.8,
     borderBottomColor: 'rgba(150, 150, 150, 0.15)',
   },
@@ -162,7 +171,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.medium,
   },
   logoutBtn: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
 });
-

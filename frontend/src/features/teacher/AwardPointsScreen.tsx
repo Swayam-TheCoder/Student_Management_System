@@ -56,7 +56,6 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Load students for selector if not preselected
   useEffect(() => {
     studentApi.getStudents(undefined, 0, 100).then((res) => {
       setStudentList(res.content);
@@ -124,7 +123,6 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
                 } pts.`
               );
               setReason('');
-              // Refresh leaderboard in Redux store
               dispatch(refreshLeaderboard());
             } catch (err: any) {
               const msg =
@@ -140,14 +138,15 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={680}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
+        style={{ flex: 1, width: '100%' }}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>Point Allocation & Adjustment</Text>
@@ -181,7 +180,7 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
             </Text>
             {selectedStudentName ? (
               <View style={[styles.selectedStudentBox, { backgroundColor: theme.inputBackground }]}>
-                <Ionicons name="person-circle-outline" size={24} color={theme.primary} />
+                <Ionicons name="person-circle-outline" size={22} color={theme.primary} />
                 <Text style={[styles.selectedStudentText, { color: theme.text }]}>
                   {selectedStudentName}
                 </Text>
@@ -191,7 +190,12 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
             <Text style={[styles.pickerHint, { color: theme.textSecondary }]}>
               Choose from class roster:
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.studentsRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.studentsRow}
+              contentContainerStyle={{ gap: 8 }}
+            >
               {studentList.map((s) => (
                 <TouchableOpacity
                   key={s.id}
@@ -203,6 +207,7 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
                       backgroundColor:
                         selectedStudentId === s.id ? theme.primary : theme.inputBackground,
                     },
+                    Platform.select({ web: { cursor: 'pointer' } as any }),
                   ]}
                 >
                   <Text
@@ -235,8 +240,9 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
                       styles.typeBtn,
                       {
                         backgroundColor: isSelected ? theme.primaryLight : theme.inputBackground,
-                        borderColor: isSelected ? theme.primary : 'transparent',
+                        borderColor: isSelected ? theme.primary : theme.border,
                       },
+                      Platform.select({ web: { cursor: 'pointer' } as any }),
                     ]}
                   >
                     <Ionicons
@@ -279,6 +285,7 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
                           ? theme.primary
                           : theme.inputBackground,
                     },
+                    Platform.select({ web: { cursor: 'pointer' } as any }),
                   ]}
                 >
                   <Text
@@ -314,7 +321,7 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
               onChangeText={setReason}
               multiline
               numberOfLines={3}
-              style={{ height: 80, textAlignVertical: 'top', paddingTop: spacing.sm }}
+              style={{ minHeight: 80, textAlignVertical: 'top', paddingTop: spacing.sm }}
             />
           </Card>
 
@@ -335,6 +342,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+    width: '100%',
   },
   header: {
     marginBottom: spacing.md,
@@ -379,7 +387,7 @@ const styles = StyleSheet.create({
   },
   pickerHint: {
     fontSize: typography.sizes.xs,
-    marginBottom: spacing.xs,
+    marginBottom: 6,
   },
   studentsRow: {
     flexDirection: 'row',
@@ -389,7 +397,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: spacing.borderRadius.full,
-    marginRight: spacing.sm,
   },
   studentChipText: {
     fontSize: typography.sizes.xs,
@@ -398,37 +405,36 @@ const styles = StyleSheet.create({
   typesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 8,
   },
   typeBtn: {
-    width: '48%',
+    width: '48.5%',
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.sm,
     borderRadius: spacing.borderRadius.md,
     borderWidth: 1.2,
-    marginBottom: spacing.sm,
   },
   typeBtnText: {
     fontSize: typography.sizes.xs,
-    marginLeft: spacing.xs,
+    marginLeft: 6,
     flex: 1,
   },
   quickPointsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: spacing.md,
   },
   quickPointChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
     borderRadius: spacing.borderRadius.sm,
-    minWidth: 46,
+    minWidth: 48,
     alignItems: 'center',
   },
   submitBtn: {
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
     marginBottom: spacing.xl,
   },
 });
-

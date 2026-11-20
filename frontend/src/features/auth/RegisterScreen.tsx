@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
+import { Card } from '../../components/common/Card';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { clearAuthError, register } from '../../store/slices/authSlice';
@@ -44,7 +45,7 @@ interface RegisterScreenProps {
 }
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const dispatch = useAppDispatch();
   const { isLoading, error } = useAppSelector((state) => state.auth);
   const [selectedRole, setSelectedRole] = useState<Role>('STUDENT');
@@ -124,7 +125,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
   const isStudent = selectedRole === 'STUDENT';
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={520} centered>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
@@ -132,79 +133,103 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Join the academic reward and management system
-            </Text>
-          </View>
-
-          {/* Role Selector Tabs */}
-          <View
+          <Card
             style={[
-              styles.roleTabsContainer,
-              { backgroundColor: theme.inputBackground, borderColor: theme.border },
+              styles.authCard,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              },
             ]}
           >
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                setSelectedRole('STUDENT');
-                setRoleValidationError(null);
-              }}
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                Join the Student Management System
+              </Text>
+            </View>
+
+            {/* Role Selector Tabs */}
+            <View
               style={[
-                styles.roleTab,
-                isStudent && [styles.activeRoleTab, { backgroundColor: theme.surface }],
+                styles.roleTabsContainer,
+                {
+                  backgroundColor: theme.inputBackground,
+                  borderColor: theme.border,
+                },
               ]}
             >
-              <Ionicons
-                name="school-outline"
-                size={18}
-                color={isStudent ? theme.primary : theme.textMuted}
-              />
-              <Text
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  setSelectedRole('STUDENT');
+                  setRoleValidationError(null);
+                }}
                 style={[
-                  styles.roleTabText,
-                  { color: isStudent ? theme.primary : theme.textSecondary },
-                  isStudent && { fontWeight: typography.weights.bold },
+                  styles.roleTab,
+                  isStudent && [
+                    styles.activeRoleTab,
+                    {
+                      backgroundColor: theme.surface,
+                      borderColor: theme.border,
+                    },
+                  ],
                 ]}
               >
-                Student
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="school-outline"
+                  size={18}
+                  color={isStudent ? theme.primary : theme.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.roleTabText,
+                    { color: isStudent ? theme.primary : theme.textSecondary },
+                    isStudent && { fontWeight: typography.weights.bold },
+                  ]}
+                >
+                  Student
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                setSelectedRole('TEACHER');
-                setRoleValidationError(null);
-              }}
-              style={[
-                styles.roleTab,
-                !isStudent && [styles.activeRoleTab, { backgroundColor: theme.surface }],
-              ]}
-            >
-              <Ionicons
-                name="briefcase-outline"
-                size={18}
-                color={!isStudent ? theme.primary : theme.textMuted}
-              />
-              <Text
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  setSelectedRole('TEACHER');
+                  setRoleValidationError(null);
+                }}
                 style={[
-                  styles.roleTabText,
-                  { color: !isStudent ? theme.primary : theme.textSecondary },
-                  !isStudent && { fontWeight: typography.weights.bold },
+                  styles.roleTab,
+                  !isStudent && [
+                    styles.activeRoleTab,
+                    {
+                      backgroundColor: theme.surface,
+                      borderColor: theme.border,
+                    },
+                  ],
                 ]}
               >
-                Teacher
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <Ionicons
+                  name="briefcase-outline"
+                  size={18}
+                  color={!isStudent ? theme.primary : theme.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.roleTabText,
+                    { color: !isStudent ? theme.primary : theme.textSecondary },
+                    !isStudent && { fontWeight: typography.weights.bold },
+                  ]}
+                >
+                  Faculty / Teacher
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-          {/* Form */}
-          <View style={styles.form}>
+            {/* Error Banner */}
             {(error || roleValidationError) && (
               <View style={[styles.errorBanner, { backgroundColor: theme.dangerLight }]}>
                 <Ionicons name="alert-circle" size={18} color={theme.danger} />
@@ -214,200 +239,206 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               </View>
             )}
 
-            <View style={styles.nameRow}>
-              <View style={styles.halfInput}>
-                <Controller
-                  control={control}
-                  name="firstName"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="First Name"
-                      placeholder="Jane"
-                      value={value}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      error={errors.firstName?.message}
-                    />
-                  )}
-                />
+            {/* Form */}
+            <View style={styles.form}>
+              {/* First Name & Last Name (Side by Side with equal flex & clean gap) */}
+              <View style={styles.nameRow}>
+                <View style={styles.halfInput}>
+                  <Controller
+                    control={control}
+                    name="firstName"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input
+                        label="First Name"
+                        placeholder="Jane"
+                        value={value}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        error={errors.firstName?.message}
+                      />
+                    )}
+                  />
+                </View>
+                <View style={styles.halfInput}>
+                  <Controller
+                    control={control}
+                    name="lastName"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input
+                        label="Last Name"
+                        placeholder="Doe"
+                        value={value}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        error={errors.lastName?.message}
+                      />
+                    )}
+                  />
+                </View>
               </View>
-              <View style={styles.halfInput}>
-                <Controller
-                  control={control}
-                  name="lastName"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Last Name"
-                      placeholder="Doe"
-                      value={value}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      error={errors.lastName?.message}
-                    />
-                  )}
-                />
-              </View>
-            </View>
 
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Email Address"
-                  placeholder="name@school.edu"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  error={errors.email?.message}
-                  leftIcon={
-                    <Ionicons name="mail-outline" size={20} color={theme.textMuted} />
-                  }
-                />
+              <Controller
+                control={control}
+                name="email"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label="Email Address"
+                    placeholder="name@school.edu"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={value}
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    error={errors.email?.message}
+                    leftIcon={
+                      <Ionicons name="mail-outline" size={19} color={theme.textMuted} />
+                    }
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label="Password"
+                    placeholder="At least 6 characters"
+                    isPassword
+                    value={value}
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    error={errors.password?.message}
+                    leftIcon={
+                      <Ionicons name="lock-closed-outline" size={19} color={theme.textMuted} />
+                    }
+                  />
+                )}
+              />
+
+              {/* Role specific inputs */}
+              {isStudent ? (
+                <>
+                  <Controller
+                    control={control}
+                    name="studentIdNumber"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input
+                        label="Student ID Number"
+                        placeholder="e.g. STU-2026-001"
+                        autoCapitalize="characters"
+                        value={value}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        leftIcon={
+                          <Ionicons name="id-card-outline" size={19} color={theme.textMuted} />
+                        }
+                      />
+                    )}
+                  />
+
+                  <Controller
+                    control={control}
+                    name="gradeLevel"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input
+                        label="Grade / Class Level"
+                        placeholder="e.g. Grade 11, Section A"
+                        value={value}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        leftIcon={
+                          <Ionicons name="bookmark-outline" size={19} color={theme.textMuted} />
+                        }
+                      />
+                    )}
+                  />
+                </>
+              ) : (
+                <>
+                  <Controller
+                    control={control}
+                    name="employeeId"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input
+                        label="Faculty Employee ID"
+                        placeholder="e.g. FAC-2026-101"
+                        autoCapitalize="characters"
+                        value={value}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        leftIcon={
+                          <Ionicons name="id-card-outline" size={19} color={theme.textMuted} />
+                        }
+                      />
+                    )}
+                  />
+
+                  <Controller
+                    control={control}
+                    name="department"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input
+                        label="Department"
+                        placeholder="e.g. Computer Science, Mathematics"
+                        value={value}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        leftIcon={
+                          <Ionicons name="business-outline" size={19} color={theme.textMuted} />
+                        }
+                      />
+                    )}
+                  />
+
+                  <Controller
+                    control={control}
+                    name="invitationCode"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input
+                        label="Teacher Invitation Secret"
+                        placeholder="e.g. TEACHER_SECRET_2026"
+                        autoCapitalize="none"
+                        value={value}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        leftIcon={
+                          <Ionicons name="key-outline" size={19} color={theme.textMuted} />
+                        }
+                      />
+                    )}
+                  />
+                </>
               )}
-            />
 
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Password"
-                  placeholder="At least 6 characters"
-                  isPassword
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  error={errors.password?.message}
-                  leftIcon={
-                    <Ionicons name="lock-closed-outline" size={20} color={theme.textMuted} />
-                  }
-                />
-              )}
-            />
+              <Button
+                title="Create Account"
+                onPress={handleSubmit(onSubmit)}
+                loading={isLoading}
+                style={styles.submitButton}
+              />
 
-            {/* Role specific inputs */}
-            {isStudent ? (
-              <>
-                <Controller
-                  control={control}
-                  name="studentIdNumber"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Student ID Number"
-                      placeholder="e.g. STU-2026-001"
-                      autoCapitalize="characters"
-                      value={value}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      leftIcon={
-                        <Ionicons name="id-card-outline" size={20} color={theme.textMuted} />
-                      }
-                    />
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="gradeLevel"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Grade / Class Level"
-                      placeholder="e.g. Grade 11, Class A"
-                      value={value}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      leftIcon={
-                        <Ionicons name="bookmark-outline" size={20} color={theme.textMuted} />
-                      }
-                    />
-                  )}
-                />
-              </>
-            ) : (
-              <>
-                <Controller
-                  control={control}
-                  name="employeeId"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Employee ID"
-                      placeholder="e.g. EMP-2026-101"
-                      autoCapitalize="characters"
-                      value={value}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      leftIcon={
-                        <Ionicons name="id-card-outline" size={20} color={theme.textMuted} />
-                      }
-                    />
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="department"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Department"
-                      placeholder="e.g. Science, Mathematics"
-                      value={value}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      leftIcon={
-                        <Ionicons name="business-outline" size={20} color={theme.textMuted} />
-                      }
-                    />
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="invitationCode"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      label="Teacher Invitation Secret"
-                      placeholder="e.g. TEACHER_SECRET_2026"
-                      autoCapitalize="none"
-                      value={value}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      leftIcon={
-                        <Ionicons name="key-outline" size={20} color={theme.textMuted} />
-                      }
-                    />
-                  )}
-                />
-              </>
-            )}
-
-            <Button
-              title="Create Account"
-              onPress={handleSubmit(onSubmit)}
-              loading={isLoading}
-              style={styles.submitButton}
-            />
-
-            {/* Switch to Login */}
-            <View style={styles.footerRow}>
-              <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-                Already registered?{' '}
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  dispatch(clearAuthError());
-                  navigation.navigate('Login');
-                }}
-              >
-                <Text style={[styles.footerLink, { color: theme.primary }]}>
-                  Sign in here
+              {/* Switch to Login */}
+              <View style={styles.footerRow}>
+                <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+                  Already have an account?{' '}
                 </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    dispatch(clearAuthError());
+                    navigation.navigate('Login');
+                  }}
+                  activeOpacity={0.7}
+                  style={Platform.select({ web: { cursor: 'pointer' } as any })}
+                >
+                  <Text style={[styles.footerLink, { color: theme.primary }]}>
+                    Sign in here
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </Card>
         </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>
@@ -417,11 +448,25 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
+    width: '100%',
+    justifyContent: 'center',
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
+    padding: spacing.md,
+    ...Platform.select({
+      web: {
+        paddingVertical: spacing.xl,
+      },
+    }),
+  },
+  authCard: {
     padding: spacing.xl,
-    paddingBottom: spacing.xxl,
+    borderRadius: spacing.borderRadius.xl,
+    marginVertical: spacing.md,
+    width: '100%',
+    alignSelf: 'center',
   },
   header: {
     alignItems: 'center',
@@ -430,11 +475,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.bold,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: typography.sizes.sm,
     textAlign: 'center',
+    lineHeight: typography.lineHeights.sm,
   },
   roleTabsContainer: {
     flexDirection: 'row',
@@ -442,25 +489,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 3,
     marginBottom: spacing.lg,
+    gap: 4,
   },
   roleTab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: 10,
     borderRadius: spacing.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        userSelect: 'none',
+      } as any,
+    }),
   },
   activeRoleTab: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
     elevation: 2,
   },
   roleTabText: {
     fontSize: typography.sizes.sm,
-    marginLeft: spacing.xs,
+    marginLeft: 6,
     fontWeight: typography.weights.medium,
   },
   form: {
@@ -468,10 +524,11 @@ const styles = StyleSheet.create({
   },
   nameRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
+    width: '100%',
   },
   halfInput: {
-    width: '48%',
+    flex: 1,
   },
   errorBanner: {
     flexDirection: 'row',
@@ -487,13 +544,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   submitButton: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
+    flexWrap: 'wrap',
   },
   footerText: {
     fontSize: typography.sizes.sm,

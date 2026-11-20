@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { PointTransaction } from '../../types/points';
 import { formatDate, formatPoints, formatTransactionType } from '../../utils/formatters';
@@ -11,7 +11,7 @@ interface TransactionItemProps {
 }
 
 export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const isPositive = transaction.points > 0;
 
   let badgeVariant: 'primary' | 'success' | 'warning' | 'danger' | 'neutral' = 'primary';
@@ -29,6 +29,13 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction })
           backgroundColor: theme.card,
           borderColor: theme.border,
         },
+        Platform.select({
+          web: {
+            boxShadow: isDark
+              ? '0 2px 8px rgba(0, 0, 0, 0.25)'
+              : '0 2px 6px rgba(15, 23, 42, 0.04)',
+          } as any,
+        }),
       ]}
     >
       <View style={styles.topRow}>
@@ -62,7 +69,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction })
 
       <View style={styles.footerRow}>
         <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-          Awarded by: {transaction.teacherName}
+          Faculty: {transaction.teacherName}
         </Text>
         <Text style={[styles.dateText, { color: theme.textMuted }]}>
           {formatDate(transaction.createdAt)}
@@ -78,6 +85,7 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.md,
     borderWidth: 1,
     marginBottom: spacing.sm,
+    width: '100%',
   },
   topRow: {
     flexDirection: 'row',
@@ -87,18 +95,18 @@ const styles = StyleSheet.create({
   },
   pointsTag: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: spacing.borderRadius.sm,
+    paddingVertical: 3,
+    borderRadius: spacing.borderRadius.xs,
   },
   pointsText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.xs,
     fontWeight: typography.weights.bold,
   },
   reason: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
     marginVertical: spacing.xs,
-    lineHeight: 20,
+    lineHeight: typography.lineHeights.sm,
   },
   footerRow: {
     flexDirection: 'row',
@@ -115,4 +123,3 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
   },
 });
-

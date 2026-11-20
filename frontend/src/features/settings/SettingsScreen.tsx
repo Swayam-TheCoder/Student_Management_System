@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -72,12 +72,15 @@ export const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <ScreenContainer>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScreenContainer maxWidth={640}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Settings & Preferences</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Application preferences and account details
+            Application theme, connection settings, and active session
           </Text>
         </View>
 
@@ -133,7 +136,10 @@ export const SettingsScreen: React.FC = () => {
         <Card>
           <View style={styles.sectionTitleRow}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Backend Server URL</Text>
-            <TouchableOpacity onPress={() => setIsEditingUrl(!isEditingUrl)}>
+            <TouchableOpacity
+              onPress={() => setIsEditingUrl(!isEditingUrl)}
+              style={Platform.select({ web: { cursor: 'pointer' } as any })}
+            >
               <Text style={[styles.editLink, { color: theme.primary }]}>
                 {isEditingUrl ? 'Cancel' : 'Edit URL'}
               </Text>
@@ -153,6 +159,11 @@ export const SettingsScreen: React.FC = () => {
                     color: theme.text,
                     borderColor: theme.border,
                   },
+                  Platform.select({
+                    web: {
+                      outlineStyle: 'none',
+                    } as any,
+                  }),
                 ]}
               />
               <View style={styles.urlBtnRow}>
@@ -182,7 +193,10 @@ export const SettingsScreen: React.FC = () => {
 
           <View style={styles.settingRow}>
             <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>Connection Test</Text>
-            <TouchableOpacity onPress={testConnection}>
+            <TouchableOpacity
+              onPress={testConnection}
+              style={Platform.select({ web: { cursor: 'pointer' } as any })}
+            >
               <Text style={[styles.settingValue, { color: theme.primary, fontWeight: typography.weights.bold }]}>
                 {testResult || 'Ping Server'}
               </Text>
@@ -214,6 +228,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+    width: '100%',
   },
   header: {
     marginBottom: spacing.md,
@@ -244,10 +259,10 @@ const styles = StyleSheet.create({
     marginVertical: spacing.sm,
   },
   urlInput: {
-    borderWidth: 1,
+    borderWidth: 1.2,
     borderRadius: spacing.borderRadius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    height: 44,
     fontSize: typography.sizes.sm,
     marginBottom: spacing.sm,
   },
@@ -258,7 +273,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: 12,
     borderBottomWidth: 0.8,
     borderBottomColor: 'rgba(150, 150, 150, 0.15)',
   },

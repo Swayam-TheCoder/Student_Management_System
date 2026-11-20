@@ -53,7 +53,7 @@ export const PodiumCard: React.FC<PodiumCardProps> = ({ topThree, currentStudent
           {entry.studentName}
         </Text>
 
-        <Text style={[styles.pointsText, { color: color }]}>
+        <Text style={[styles.pointsText, { color }]}>
           {entry.totalPoints} pts
         </Text>
 
@@ -76,21 +76,30 @@ export const PodiumCard: React.FC<PodiumCardProps> = ({ topThree, currentStudent
   };
 
   return (
-    <View style={styles.container}>
-      {renderPodiumItem(second, 2, theme.podiumSilver)}
-      {renderPodiumItem(first, 1, theme.podiumGold)}
-      {renderPodiumItem(third, 3, theme.podiumBronze)}
+    <View style={styles.wrapper}>
+      <View style={styles.container}>
+        {renderPodiumItem(second, 2, theme.podiumSilver)}
+        {renderPodiumItem(first, 1, theme.podiumGold)}
+        {renderPodiumItem(third, 3, theme.podiumBronze)}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
+    width: '100%',
+    maxWidth: 480,
   },
   column: {
     flex: 1,
@@ -115,7 +124,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.semibold,
     textAlign: 'center',
-    maxWidth: 90,
+    maxWidth: 96,
     marginBottom: 2,
   },
   pointsText: {
@@ -124,7 +133,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   stand: {
-    width: '90%',
+    width: '92%',
     borderTopLeftRadius: spacing.borderRadius.md,
     borderTopRightRadius: spacing.borderRadius.md,
     alignItems: 'center',
@@ -136,4 +145,3 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.extrabold,
   },
 });
-

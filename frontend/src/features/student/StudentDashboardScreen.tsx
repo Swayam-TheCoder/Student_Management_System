@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -50,18 +50,15 @@ export const StudentDashboardScreen: React.FC<StudentDashboardProps> = ({ naviga
     if (!studentProfileId) return;
 
     try {
-      // 1. Fetch recent transactions (latest 3)
       const txRes = await studentApi.getStudentTransactions(studentProfileId, 0, 3);
       setRecentTransactions(txRes.content);
 
-      // 2. Fetch leaderboard page 0 to discover rank
       const lbRes = await leaderboardApi.getLeaderboard(0, 100);
       const myEntry = lbRes.content.find((e) => e.studentId === studentProfileId);
       if (myEntry) {
         setCurrentRank(myEntry.rank);
       }
 
-      // 3. Refresh user profile points
       dispatch(refreshProfile());
     } catch (e) {
       console.warn('Failed to load student dashboard data', e);
@@ -79,9 +76,10 @@ export const StudentDashboardScreen: React.FC<StudentDashboardProps> = ({ naviga
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={960}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -140,7 +138,10 @@ export const StudentDashboardScreen: React.FC<StudentDashboardProps> = ({ naviga
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Leaderboard')}
-              style={styles.heroActionBtn}
+              style={[
+                styles.heroActionBtn,
+                Platform.select({ web: { cursor: 'pointer' } as any }),
+              ]}
             >
               <Text style={styles.heroActionBtnText}>Leaderboard</Text>
               <Ionicons name="arrow-forward" size={14} color="#ffffff" />
@@ -148,7 +149,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardProps> = ({ naviga
           </View>
         </Card>
 
-        {/* Quick Nav Row */}
+        {/* Quick Nav Row (Equal Flex & Gap) */}
         <View style={styles.quickNavRow}>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -156,12 +157,13 @@ export const StudentDashboardScreen: React.FC<StudentDashboardProps> = ({ naviga
             style={[
               styles.quickNavBtn,
               { backgroundColor: theme.surface, borderColor: theme.border },
+              Platform.select({ web: { cursor: 'pointer' } as any }),
             ]}
           >
             <View style={[styles.quickNavIcon, { backgroundColor: theme.primaryLight }]}>
               <Ionicons name="time-outline" size={22} color={theme.primary} />
             </View>
-            <View>
+            <View style={styles.quickNavTextCol}>
               <Text style={[styles.quickNavTitle, { color: theme.text }]}>Point History</Text>
               <Text style={[styles.quickNavSub, { color: theme.textMuted }]}>
                 View all transactions
@@ -175,12 +177,13 @@ export const StudentDashboardScreen: React.FC<StudentDashboardProps> = ({ naviga
             style={[
               styles.quickNavBtn,
               { backgroundColor: theme.surface, borderColor: theme.border },
+              Platform.select({ web: { cursor: 'pointer' } as any }),
             ]}
           >
             <View style={[styles.quickNavIcon, { backgroundColor: theme.successLight }]}>
               <Ionicons name="id-card-outline" size={22} color={theme.success} />
             </View>
-            <View>
+            <View style={styles.quickNavTextCol}>
               <Text style={[styles.quickNavTitle, { color: theme.text }]}>My Profile</Text>
               <Text style={[styles.quickNavSub, { color: theme.textMuted }]}>
                 Academic details
@@ -192,7 +195,10 @@ export const StudentDashboardScreen: React.FC<StudentDashboardProps> = ({ naviga
         {/* Recent Transactions Section */}
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activity</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('PointHistory')}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('PointHistory')}
+            style={Platform.select({ web: { cursor: 'pointer' } as any })}
+          >
             <Text style={[styles.sectionActionText, { color: theme.primary }]}>
               View All
             </Text>
@@ -217,6 +223,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+    width: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -245,7 +252,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroCard: {
-    padding: spacing.lg,
+    padding: spacing.xl,
     borderRadius: spacing.borderRadius.xl,
     marginBottom: spacing.lg,
   },
@@ -303,11 +310,12 @@ const styles = StyleSheet.create({
   },
   quickNavRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
     marginBottom: spacing.lg,
+    width: '100%',
   },
   quickNavBtn: {
-    flex: 0.48,
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
@@ -315,19 +323,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   quickNavIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
+  },
+  quickNavTextCol: {
+    flex: 1,
   },
   quickNavTitle: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
   },
   quickNavSub: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
   },
   sectionHeaderRow: {
@@ -345,4 +356,3 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
   },
 });
-

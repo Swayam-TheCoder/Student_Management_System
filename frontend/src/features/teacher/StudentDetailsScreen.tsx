@@ -78,7 +78,7 @@ export const StudentDetailsScreen: React.FC<StudentDetailsProps> = ({ route, nav
 
   if (isLoading && !isRefreshing) {
     return (
-      <ScreenContainer>
+      <ScreenContainer maxWidth={860}>
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -88,7 +88,7 @@ export const StudentDetailsScreen: React.FC<StudentDetailsProps> = ({ route, nav
 
   if (!student) {
     return (
-      <ScreenContainer>
+      <ScreenContainer maxWidth={860}>
         <EmptyState
           icon="alert-circle-outline"
           title="Student not found"
@@ -99,7 +99,7 @@ export const StudentDetailsScreen: React.FC<StudentDetailsProps> = ({ route, nav
   }
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={860}>
       <FlatList
         data={transactions}
         keyExtractor={(item) => item.id.toString()}
@@ -133,7 +133,6 @@ export const StudentDetailsScreen: React.FC<StudentDetailsProps> = ({ route, nav
                   </Text>
                   <View style={styles.badgeRow}>
                     <Badge label={student.studentIdNumber} variant="primary" size="sm" />
-                    <View style={{ width: 6 }} />
                     <Badge label={student.gradeLevel} variant="neutral" size="sm" />
                   </View>
                 </View>
@@ -187,6 +186,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+    width: '100%',
   },
   centerContainer: {
     flex: 1,
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   profileCard: {
-    padding: spacing.md,
+    padding: spacing.lg,
     marginBottom: spacing.md,
   },
   profileHeaderRow: {
@@ -222,10 +222,11 @@ const styles = StyleSheet.create({
   },
   studentEmail: {
     fontSize: typography.sizes.xs,
-    marginBottom: spacing.xs,
+    marginBottom: 6,
   },
   badgeRow: {
     flexDirection: 'row',
+    gap: 8,
   },
   scoreBox: {
     flexDirection: 'row',
@@ -258,4 +259,3 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
   },
 });
-

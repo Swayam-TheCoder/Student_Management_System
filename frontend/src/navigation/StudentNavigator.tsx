@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { StudentDashboardScreen } from '../features/student/StudentDashboardScreen';
@@ -12,7 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 const Tab = createBottomTabNavigator<StudentTabParamList>();
 
 export const StudentNavigator: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   return (
     <Tab.Navigator
@@ -24,9 +25,20 @@ export const StudentNavigator: React.FC = () => {
           height: 60,
           paddingBottom: 8,
           paddingTop: 6,
+          ...Platform.select({
+            web: {
+              boxShadow: isDark
+                ? '0 -2px 10px rgba(0, 0, 0, 0.4)'
+                : '0 -2px 10px rgba(15, 23, 42, 0.05)',
+            } as any,
+          }),
         },
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textMuted,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+        },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
@@ -74,4 +86,3 @@ export const StudentNavigator: React.FC = () => {
     </Tab.Navigator>
   );
 };
-

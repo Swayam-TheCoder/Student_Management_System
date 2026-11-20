@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { LeaderboardEntry } from '../../types/leaderboard';
 import { spacing, typography } from '../../theme';
@@ -36,6 +36,13 @@ export const LeaderboardRow: React.FC<LeaderboardRowProps> = ({ entry, isCurrent
             : theme.card,
           borderColor: isCurrentUser ? theme.primary : theme.border,
         },
+        Platform.select({
+          web: {
+            boxShadow: isDark
+              ? '0 2px 8px rgba(0, 0, 0, 0.25)'
+              : '0 2px 6px rgba(15, 23, 42, 0.04)',
+          } as any,
+        }),
       ]}
     >
       {/* Rank Number Circle */}
@@ -79,11 +86,12 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.md,
     borderWidth: 1,
     marginBottom: spacing.sm,
+    width: '100%',
   },
   rankCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -94,20 +102,21 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     flex: 1,
+    marginRight: spacing.sm,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
   name: {
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
   },
   youTag: {
-    marginLeft: spacing.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: spacing.borderRadius.sm,
+    borderRadius: spacing.borderRadius.xs,
   },
   youText: {
     color: '#ffffff',
@@ -121,10 +130,10 @@ const styles = StyleSheet.create({
   pointsBadge: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: spacing.borderRadius.sm,
-    minWidth: 54,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: spacing.borderRadius.md,
+    minWidth: 64,
   },
   pointsValue: {
     fontSize: typography.sizes.md,
@@ -135,4 +144,3 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.medium,
   },
 });
-

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -81,12 +82,12 @@ export const StudentDirectoryScreen: React.FC<StudentDirectoryProps> = ({ naviga
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={960}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>Student Directory</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Search, review profiles, and view transaction history
+            Search, review profiles, and view point history records
           </Text>
 
           {/* Search Bar */}
@@ -96,7 +97,7 @@ export const StudentDirectoryScreen: React.FC<StudentDirectoryProps> = ({ naviga
             onChangeText={setSearchQuery}
             containerStyle={styles.searchInputContainer}
             leftIcon={
-              <Ionicons name="search-outline" size={20} color={theme.textMuted} />
+              <Ionicons name="search-outline" size={19} color={theme.textMuted} />
             }
           />
         </View>
@@ -113,6 +114,7 @@ export const StudentDirectoryScreen: React.FC<StudentDirectoryProps> = ({ naviga
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}
+                style={Platform.select({ web: { cursor: 'pointer' } as any })}
               >
                 <Card style={styles.studentCard}>
                   <View style={styles.cardRow}>
@@ -188,6 +190,7 @@ export const StudentDirectoryScreen: React.FC<StudentDirectoryProps> = ({ naviga
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
   },
   header: {
     paddingHorizontal: spacing.md,
@@ -230,6 +233,7 @@ const styles = StyleSheet.create({
   },
   infoCol: {
     flex: 1,
+    marginRight: spacing.sm,
   },
   studentName: {
     fontSize: typography.sizes.md,
@@ -252,4 +256,3 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-
