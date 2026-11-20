@@ -1,72 +1,73 @@
 # Student Management System
 
-A production-grade Student Management System backend engineered with Spring Boot 3.3.5, Spring Security 6, Spring Data JPA, Flyway migrations, and PostgreSQL.
-
-## Core Features Implemented
-
-1. **Role-Based Authentication & Authorization**
-   - JWT authentication signed via HMAC-SHA256 with stateless session management.
-   - Distinct roles: `STUDENT` and `TEACHER`.
-   - Teacher registration guarded by an invitation secret.
-   - BCrypt hashing (12 rounds) with zero password exposure in DTO responses.
-
-2. **Student Directory & Profile Management**
-   - Teacher student search with pagination and sorting.
-   - Protected profile retrieval: students access only their own profile; teachers can access any student.
-
-3. **Point Management Engine**
-   - Teachers award or deduct points across categories: `ACADEMIC`, `PARTICIPATION`, `BEHAVIOR`, `PENALTY`, `ADJUSTMENT`.
-   - Immutable audit logging for every point transaction.
-   - Atomic balance updates using pessimistic database write locking to prevent lost updates under concurrent awards.
-   - Non-negative point validation preventing balances below zero.
-
-4. **Dynamic Competition Leaderboard**
-   - Global standard competition ranking (`1, 2, 2, 4`) calculated via SQL window functions.
-   - Accurate ranking preserved across server-side pagination slices.
+A production-quality full-stack academic merit, evaluation, and student management platform featuring a **Spring Boot 3.3.5** backend and an **Expo React Native** mobile client.
 
 ---
 
-## API Specifications
+## Architecture Overview
 
-### Authentication
-- `POST /api/v1/auth/register` — Register student or teacher.
-- `POST /api/v1/auth/login` — Authenticate and receive JWT token.
-- `GET /api/v1/auth/me` — Retrieve current authenticated user profile.
-
-### Student Management
-- `GET /api/v1/students` — Paginated student search (Teacher only).
-- `GET /api/v1/students/{id}` — Student profile by ID (Teacher or own student).
-- `GET /api/v1/students/me/profile` — Logged-in student's profile (Student only).
-- `GET /api/v1/students/{id}/transactions` — Paginated point history (Teacher or own student).
-
-### Point Adjustments
-- `POST /api/v1/points/award` — Award or adjust points (Teacher only).
-- `GET /api/v1/points/types` — List valid transaction types.
-
-### Leaderboard
-- `GET /api/v1/leaderboard` — Paginated global leaderboard with competition rank.
+- **Backend**: Java 23 / 17, Spring Boot 3.3.5, Spring Security 6, Spring Data JPA, Flyway, PostgreSQL 18, JJWT 0.12.6.
+- **Mobile Frontend**: React Native, Expo SDK 51, TypeScript, React Navigation 6, Redux Toolkit, Context API (Theme), Expo SecureStore, Axios, React Hook Form, Zod.
+- **Authentication**: Stateless HMAC-SHA256 Bearer JWT with hardware-backed SecureStore persistence.
+- **Authorization**: Strict role-based access control (`STUDENT` vs `TEACHER`) with backend `@PreAuthorize` method guards.
 
 ---
 
-## Running the Application
+## Mobile Features
 
-### Prerequisites
-- Java 17 or higher
-- Apache Maven 3.9+
-- PostgreSQL database
+1. **Role-Based Protected Navigation**:
+   - `AuthNavigator`: Login & Register screens with password visibility toggle, Zod validation, and role toggle.
+   - `StudentNavigator`: Bottom tabs for Dashboard, Leaderboard, Point History, Profile, and Settings.
+   - `TeacherNavigator`: Bottom tabs for Dashboard, Student Directory, Award/Adjust Points, Leaderboard, Settings, and detailed Student Dossier.
+2. **Point Management Engine**:
+   - Teachers allocate merits or apply deductions across 5 categories (`ACADEMIC`, `PARTICIPATION`, `BEHAVIOR`, `PENALTY`, `ADJUSTMENT`).
+   - Pessimistic write locking on the database prevents lost updates during concurrent allocations.
+   - Real-time balance updates and immutable audit logging.
+3. **Dynamic Competition Leaderboard**:
+   - Server-side paginated standard competition ranking (`1, 2, 2, 4`).
+   - Top 3 Podium highlight with medals and badges.
+   - Highlights the authenticated student's relative position.
+4. **Global Theming**:
+   - Instant switching between Light Mode and Dark Mode via Context API.
+   - Persistent theme preferences saved to SecureStore.
 
-### Local Startup
+---
+
+## Getting Started
+
+### 1. Backend Setup
+
 ```powershell
-# Navigate to backend
+# Navigate to backend directory
 cd backend
 
-# Execute via Maven
+# Compile and run tests
+mvn clean test
+
+# Start the Spring Boot server (port 8080)
 mvn spring-boot:run
 ```
 
-### Running Test Suite
+The backend connects to PostgreSQL running on `localhost:5433` (database: `sms_db`, user: `postgres`, password: `postgres`).
+
+### 2. Frontend Mobile Setup
+
 ```powershell
-cd backend
-mvn test
+# Navigate to frontend directory
+cd frontend
+
+# Verify TypeScript type checking
+npx tsc --noEmit
+
+# Start the Expo development server
+npx expo start
 ```
 
+Press `w` in the terminal to open in a web browser, or scan the QR code with the Expo Go app on a physical Android or iOS device connected to your local network.
+
+---
+
+## Network & Connectivity Configuration
+
+- Mobile devices connect to the host computer's LAN IP (`10.46.187.163:8080`).
+- Configured in `frontend/src/utils/env.ts`.

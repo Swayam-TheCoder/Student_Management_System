@@ -1,0 +1,30 @@
+# Frontend .gitignore
+node_modules/
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Native build outputs
+android/
+ios/
+
+# Keystores and Certificates
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+
