@@ -6,9 +6,9 @@ spring:
     name: student-management-system
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/sms_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sms_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:swayam12}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -31,3 +31,4 @@ app:
     expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours
   security:
     teacher-invitation-code: ${TEACHER_INVITATION_CODE:TEACHER_SECRET_2026}
+

@@ -10,6 +10,9 @@ public class PagedResponse<T> {
     private long totalElements;
     private int totalPages;
     private boolean last;
+    private boolean first;
+    private boolean hasNext;
+    private boolean hasPrevious;
 
     public PagedResponse() {
     }
@@ -21,6 +24,9 @@ public class PagedResponse<T> {
         this.totalElements = totalElements;
         this.totalPages = totalPages;
         this.last = last;
+        this.first = page == 0;
+        this.hasNext = page < totalPages - 1;
+        this.hasPrevious = page > 0;
     }
 
     public List<T> getContent() {
@@ -70,5 +76,28 @@ public class PagedResponse<T> {
     public void setLast(boolean last) {
         this.last = last;
     }
-}
 
+    public boolean isFirst() {
+        return first;
+    }
+
+    public void setFirst(boolean first) {
+        this.first = first;
+    }
+
+    public boolean isHasNext() {
+        return hasNext;
+    }
+
+    public void setHasNext(boolean hasNext) {
+        this.hasNext = hasNext;
+    }
+
+    public boolean isHasPrevious() {
+        return hasPrevious;
+    }
+
+    public void setHasPrevious(boolean hasPrevious) {
+        this.hasPrevious = hasPrevious;
+    }
+}

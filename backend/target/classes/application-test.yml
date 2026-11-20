@@ -20,3 +20,4 @@ app:
     expiration-ms: 3600000
   security:
     teacher-invitation-code: TEST_TEACHER_SECRET
+

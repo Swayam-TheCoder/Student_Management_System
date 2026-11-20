@@ -51,3 +51,4 @@ CREATE INDEX idx_teacher_profiles_user_id ON teacher_profiles(user_id);
 CREATE INDEX idx_teacher_profiles_employee_id ON teacher_profiles(employee_id);
 CREATE INDEX idx_point_tx_student_created ON point_transactions(student_id, created_at DESC);
 CREATE INDEX idx_point_tx_teacher ON point_transactions(teacher_id);
+
