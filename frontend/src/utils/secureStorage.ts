@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 const TOKEN_KEY = 'sms_auth_token';
 const THEME_KEY = 'sms_theme_mode';
+const API_URL_KEY = 'sms_custom_api_url';
 
 export const secureStorage = {
   async saveToken(token: string): Promise<void> {
@@ -63,5 +64,27 @@ export const secureStorage = {
       return null;
     }
   },
-};
 
+  async saveCustomApiUrl(url: string): Promise<void> {
+    try {
+      if (Platform.OS === 'web') {
+        localStorage.setItem(API_URL_KEY, url);
+      } else {
+        await SecureStore.setItemAsync(API_URL_KEY, url);
+      }
+    } catch (e) {
+      console.warn('Failed to save custom API URL', e);
+    }
+  },
+
+  async getCustomApiUrl(): Promise<string | null> {
+    try {
+      if (Platform.OS === 'web') {
+        return localStorage.getItem(API_URL_KEY);
+      }
+      return await SecureStore.getItemAsync(API_URL_KEY);
+    } catch (e) {
+      return null;
+    }
+  },
+};

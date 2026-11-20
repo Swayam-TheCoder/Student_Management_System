@@ -1,5 +1,14 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { Card } from '../../components/common/Card';
@@ -8,13 +17,59 @@ import { Badge } from '../../components/common/Badge';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { logout } from '../../store/slices/authSlice';
-import { API_BASE_URL } from '../../utils/env';
+import { getDefaultBaseUrl } from '../../utils/env';
+import { secureStorage } from '../../utils/secureStorage';
+import { apiClient } from '../../api/client';
 import { spacing, typography } from '../../theme';
 
 export const SettingsScreen: React.FC = () => {
   const { theme, isDark, toggleTheme } = useTheme();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
+
+  const [apiUrl, setApiUrl] = useState<string>('');
+  const [isEditingUrl, setIsEditingUrl] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    secureStorage.getCustomApiUrl().then((saved) => {
+      setApiUrl(saved || getDefaultBaseUrl());
+    });
+  }, []);
+
+  const handleSaveApiUrl = async () => {
+    if (!apiUrl.trim()) {
+      const def = getDefaultBaseUrl();
+      setApiUrl(def);
+      await secureStorage.saveCustomApiUrl(def);
+    } else {
+      await secureStorage.saveCustomApiUrl(apiUrl.trim());
+    }
+    setIsEditingUrl(false);
+    testConnection();
+  };
+
+  const handleResetApiUrl = async () => {
+    const def = getDefaultBaseUrl();
+    setApiUrl(def);
+    await secureStorage.saveCustomApiUrl(def);
+    setIsEditingUrl(false);
+    testConnection();
+  };
+
+  const testConnection = async () => {
+    setTestResult('Testing...');
+    try {
+      const res = await apiClient.get('/health');
+      if (res.data?.success) {
+        setTestResult('Connected (Status: UP)');
+      } else {
+        setTestResult('Unexpected response');
+      }
+    } catch (e: any) {
+      setTestResult('Connection failed. Verify server is running.');
+    }
+  };
 
   return (
     <ScreenContainer>
@@ -76,13 +131,64 @@ export const SettingsScreen: React.FC = () => {
 
         {/* System & Connection Info */}
         <Card>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Backend Connectivity</Text>
-          <View style={styles.settingRow}>
-            <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>API Host</Text>
-            <Text style={[styles.settingValue, { color: theme.text }]} numberOfLines={1}>
-              {API_BASE_URL}
-            </Text>
+          <View style={styles.sectionTitleRow}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Backend Server URL</Text>
+            <TouchableOpacity onPress={() => setIsEditingUrl(!isEditingUrl)}>
+              <Text style={[styles.editLink, { color: theme.primary }]}>
+                {isEditingUrl ? 'Cancel' : 'Edit URL'}
+              </Text>
+            </TouchableOpacity>
           </View>
+
+          {isEditingUrl ? (
+            <View style={styles.editUrlBox}>
+              <TextInput
+                value={apiUrl}
+                onChangeText={setApiUrl}
+                autoCapitalize="none"
+                style={[
+                  styles.urlInput,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
+              />
+              <View style={styles.urlBtnRow}>
+                <Button
+                  title="Save & Test"
+                  onPress={handleSaveApiUrl}
+                  size="sm"
+                  style={{ flex: 1, marginRight: spacing.sm }}
+                />
+                <Button
+                  title="Reset Default"
+                  variant="secondary"
+                  onPress={handleResetApiUrl}
+                  size="sm"
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.settingRow}>
+              <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>API Host</Text>
+              <Text style={[styles.settingValue, { color: theme.text }]} numberOfLines={1}>
+                {apiUrl}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.settingRow}>
+            <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>Connection Test</Text>
+            <TouchableOpacity onPress={testConnection}>
+              <Text style={[styles.settingValue, { color: theme.primary, fontWeight: typography.weights.bold }]}>
+                {testResult || 'Ping Server'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
             <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>Security</Text>
             <Text style={[styles.settingValue, { color: theme.success }]}>
@@ -123,7 +229,30 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  editLink: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
+  },
+  editUrlBox: {
+    marginVertical: spacing.sm,
+  },
+  urlInput: {
+    borderWidth: 1,
+    borderRadius: spacing.borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: typography.sizes.sm,
+    marginBottom: spacing.sm,
+  },
+  urlBtnRow: {
+    flexDirection: 'row',
   },
   settingRow: {
     flexDirection: 'row',
@@ -148,9 +277,9 @@ const styles = StyleSheet.create({
   settingValue: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
+    maxWidth: '65%',
   },
   logoutBtn: {
     marginTop: spacing.md,
   },
 });
-

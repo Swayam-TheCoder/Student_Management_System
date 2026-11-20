@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { API_BASE_URL } from '../utils/env';
+import { API_BASE_URL, getActiveBaseUrl } from '../utils/env';
 import { secureStorage } from '../utils/secureStorage';
 
 export const apiClient = axios.create({
@@ -17,9 +17,13 @@ export const setOnUnauthorizedCallback = (callback: () => void) => {
   onUnauthorizedCallback = callback;
 };
 
-// Request Interceptor: Attach Bearer Token
+// Request Interceptor: Attach Bearer Token & Dynamic Base URL
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    // Resolve dynamic Base URL
+    const activeUrl = await getActiveBaseUrl();
+    config.baseURL = activeUrl;
+
     const token = await secureStorage.getToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -42,4 +46,3 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
