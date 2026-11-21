@@ -1,0 +1,33 @@
+# ==============================================================================
+# Docker Ignore Configuration for Student Management System Backend
+# ==============================================================================
+
+# Build outputs
+target/
+*.class
+
+# Version control
+.git/
+.gitignore
+
+# Environment files and credentials (preserve .env.example template)
+.env
+.env.*
+!.env.example
+
+# IDE & Editor configuration
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Logs
+*.log
+logs/
+
+# Operating system artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
