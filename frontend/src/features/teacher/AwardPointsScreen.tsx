@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -9,12 +9,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Card } from '../../components/common/Card';
+import { Badge } from '../../components/common/Badge';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppDispatch } from '../../store/hooks';
 import { refreshLeaderboard } from '../../store/slices/leaderboardSlice';
@@ -40,8 +41,9 @@ const TRANSACTION_TYPES: { type: TransactionType; label: string; icon: keyof typ
 ];
 
 export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const dispatch = useAppDispatch();
+  const navigation = useNavigation<any>();
 
   const preselectedId = route.params?.preselectedStudentId;
   const preselectedName = route.params?.preselectedStudentName;
@@ -53,11 +55,15 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
   const [selectedType, setSelectedType] = useState<TransactionType>('ACADEMIC');
   const [reason, setReason] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
 
-  useEffect(() => {
-    studentApi.getStudents(undefined, 0, 100).then((res) => {
+  const loadEnrolledStudents = useCallback(async () => {
+    setIsLoadingStudents(true);
+    try {
+      const res = await studentApi.getStudents(undefined, 0, 100);
       setStudentList(res.content);
       if (preselectedId) {
         const found = res.content.find((s) => s.id === preselectedId);
@@ -65,8 +71,25 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
           setSelectedStudentName(`${found.firstName} ${found.lastName} (${found.studentIdNumber})`);
         }
       }
-    });
+    } catch (e) {
+      console.warn('Failed to load enrolled students roster', e);
+    } finally {
+      setIsLoadingStudents(false);
+    }
   }, [preselectedId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadEnrolledStudents();
+    }, [loadEnrolledStudents])
+  );
+
+  useEffect(() => {
+    if (preselectedId && preselectedName) {
+      setSelectedStudentId(preselectedId);
+      setSelectedStudentName(preselectedName);
+    }
+  }, [preselectedId, preselectedName]);
 
   const handleStudentSelect = (student: StudentDetail) => {
     setSelectedStudentId(student.id);
@@ -77,18 +100,18 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
     setPointsInput(pts.toString());
   };
 
-  const handleSubmit = () => {
+  const handleOpenConfirm = () => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
     if (!selectedStudentId) {
-      setErrorMessage('Please select a student');
+      setErrorMessage('Please select a student enrolled in your classes');
       return;
     }
 
     const points = parseInt(pointsInput, 10);
     if (isNaN(points) || points === 0) {
-      setErrorMessage('Points value must be a valid non-zero number');
+      setErrorMessage('Points value must be a valid non-zero integer');
       return;
     }
 
@@ -97,45 +120,46 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
       return;
     }
 
-    const actionText = points > 0 ? 'award' : 'deduct';
-    const absPoints = Math.abs(points);
-
-    Alert.alert(
-      'Confirm Point Allocation',
-      `Are you sure you want to ${actionText} ${absPoints} points ${points > 0 ? 'to' : 'from'
-      } ${selectedStudentName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            setIsSubmitting(true);
-            try {
-              const res = await pointApi.awardPoints({
-                studentId: selectedStudentId,
-                points,
-                transactionType: selectedType,
-                reason: reason.trim(),
-              });
-
-              setSuccessMessage(
-                `Success! ${points > 0 ? '+' : ''}${points} points allocated. New balance: ${res.updatedTotalPoints
-                } pts.`
-              );
-              setReason('');
-              dispatch(refreshLeaderboard());
-            } catch (err: any) {
-              const msg =
-                err?.response?.data?.message || 'Failed to award points. Please check inputs.';
-              setErrorMessage(msg);
-            } finally {
-              setIsSubmitting(false);
-            }
-          },
-        },
-      ]
-    );
+    setIsConfirmModalVisible(true);
   };
+
+  const handleExecuteAllocation = async () => {
+    if (!selectedStudentId) return;
+
+    const points = parseInt(pointsInput, 10);
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      const res = await pointApi.awardPoints({
+        studentId: selectedStudentId,
+        points,
+        transactionType: selectedType,
+        reason: reason.trim(),
+      });
+
+      setIsConfirmModalVisible(false);
+      setSuccessMessage(
+        `Success! ${points > 0 ? '+' : ''}${points} points allocated to ${res.studentName}. New balance: ${
+          res.updatedTotalPoints
+        } pts.`
+      );
+      setReason('');
+      dispatch(refreshLeaderboard());
+      // Refresh local list to show updated total points
+      loadEnrolledStudents();
+    } catch (err: any) {
+      setIsConfirmModalVisible(false);
+      const msg =
+        err?.response?.data?.message || 'Failed to award points. Please check inputs and class authorization.';
+      setErrorMessage(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const pointsValue = parseInt(pointsInput, 10) || 0;
+  const isDeduction = pointsValue < 0 || selectedType === 'PENALTY';
 
   return (
     <ScreenContainer maxWidth={680}>
@@ -151,7 +175,7 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>Point Allocation & Adjustment</Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Recognize merit, active participation, or apply disciplinary score deductions
+              Recognize merit, active participation, or apply disciplinary score adjustments
             </Text>
           </View>
 
@@ -176,51 +200,90 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
           {/* Student Selector */}
           <Card>
             <Text style={[styles.cardSectionTitle, { color: theme.text }]}>
-              Target Student
+              Target Student (Enrolled in Your Classes)
             </Text>
+
             {selectedStudentName ? (
               <View style={[styles.selectedStudentBox, { backgroundColor: theme.inputBackground }]}>
-                <Ionicons name="person-circle-outline" size={22} color={theme.primary} />
-                <Text style={[styles.selectedStudentText, { color: theme.text }]}>
-                  {selectedStudentName}
-                </Text>
+                <Ionicons name="person-circle-outline" size={24} color={theme.primary} />
+                <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                  <Text style={[styles.selectedStudentText, { color: theme.text }]}>
+                    {selectedStudentName}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedStudentId(null);
+                    setSelectedStudentName('');
+                  }}
+                  style={Platform.select({ web: { cursor: 'pointer' } as any })}
+                >
+                  <Ionicons name="close-circle" size={20} color={theme.textMuted} />
+                </TouchableOpacity>
               </View>
             ) : null}
 
-            <Text style={[styles.pickerHint, { color: theme.textSecondary }]}>
-              Choose from class roster:
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.studentsRow}
-              contentContainerStyle={{ gap: 8 }}
-            >
-              {studentList.map((s) => (
+            {studentList.length === 0 ? (
+              <View style={[styles.emptyRosterBox, { backgroundColor: theme.inputBackground }]}>
+                <Ionicons name="information-circle-outline" size={22} color={theme.primary} />
+                <Text style={[styles.emptyRosterText, { color: theme.textSecondary }]}>
+                  No students are enrolled in your classes yet. Create a class from Dashboard and share your enrollment code to allow students to enroll.
+                </Text>
                 <TouchableOpacity
-                  key={s.id}
-                  activeOpacity={0.75}
-                  onPress={() => handleStudentSelect(s)}
-                  style={[
-                    styles.studentChip,
-                    {
-                      backgroundColor:
-                        selectedStudentId === s.id ? theme.primary : theme.inputBackground,
-                    },
-                    Platform.select({ web: { cursor: 'pointer' } as any }),
-                  ]}
+                  onPress={() => navigation.navigate('TeacherDashboard')}
+                  style={[styles.goToDashBtn, { backgroundColor: theme.primary }]}
                 >
-                  <Text
-                    style={[
-                      styles.studentChipText,
-                      { color: selectedStudentId === s.id ? '#ffffff' : theme.text },
-                    ]}
-                  >
-                    {s.firstName} {s.lastName}
-                  </Text>
+                  <Text style={styles.goToDashBtnText}>Go to Class Management</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+            ) : (
+              <>
+                <Text style={[styles.pickerHint, { color: theme.textSecondary }]}>
+                  Choose from enrolled class roster:
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.studentsRow}
+                  contentContainerStyle={{ gap: 8 }}
+                >
+                  {studentList.map((s) => {
+                    const isSelected = selectedStudentId === s.id;
+                    return (
+                      <TouchableOpacity
+                        key={s.id}
+                        activeOpacity={0.75}
+                        onPress={() => handleStudentSelect(s)}
+                        style={[
+                          styles.studentChip,
+                          {
+                            backgroundColor: isSelected ? theme.primary : theme.inputBackground,
+                            borderColor: isSelected ? theme.primary : theme.border,
+                            borderWidth: 1,
+                          },
+                          Platform.select({ web: { cursor: 'pointer' } as any }),
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.studentChipText,
+                            { color: isSelected ? '#ffffff' : theme.text },
+                          ]}
+                        >
+                          {s.firstName} {s.lastName}
+                        </Text>
+                        <Badge
+                          label={`${s.totalPoints} pts`}
+                          variant={isSelected ? 'success' : 'neutral'}
+                          size="sm"
+                          style={{ marginLeft: 6 }}
+                        />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
           </Card>
 
           {/* Transaction Type Picker */}
@@ -326,14 +389,115 @@ export const AwardPointsScreen: React.FC<AwardPointsScreenProps> = ({ route }) =
           </Card>
 
           <Button
-            title={parseInt(pointsInput, 10) < 0 ? 'Deduct Points' : 'Award Points'}
-            variant={parseInt(pointsInput, 10) < 0 ? 'danger' : 'primary'}
-            onPress={handleSubmit}
+            title={isDeduction ? 'Deduct Points' : 'Award Points'}
+            variant={isDeduction ? 'danger' : 'primary'}
+            onPress={handleOpenConfirm}
             loading={isSubmitting}
+            disabled={studentList.length === 0}
             style={styles.submitBtn}
           />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Cross-Platform Confirmation Modal (Works 100% on Web & Native) */}
+      <Modal
+        visible={isConfirmModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsConfirmModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalDialog,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <View
+                style={[
+                  styles.modalIconBox,
+                  {
+                    backgroundColor: isDeduction ? theme.dangerLight : theme.primaryLight,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={isDeduction ? 'remove-circle-outline' : 'sparkles-outline'}
+                  size={24}
+                  color={isDeduction ? theme.danger : theme.primary}
+                />
+              </View>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Confirm Point {isDeduction ? 'Deduction' : 'Allocation'}
+              </Text>
+            </View>
+
+            <View style={[styles.modalBody, { backgroundColor: theme.inputBackground }]}>
+              <View style={styles.modalDetailRow}>
+                <Text style={[styles.modalDetailLabel, { color: theme.textSecondary }]}>
+                  Student:
+                </Text>
+                <Text style={[styles.modalDetailValue, { color: theme.text }]}>
+                  {selectedStudentName}
+                </Text>
+              </View>
+
+              <View style={styles.modalDetailRow}>
+                <Text style={[styles.modalDetailLabel, { color: theme.textSecondary }]}>
+                  Amount:
+                </Text>
+                <Text
+                  style={[
+                    styles.modalDetailValue,
+                    {
+                      color: isDeduction ? theme.danger : theme.success,
+                      fontWeight: typography.weights.bold,
+                    },
+                  ]}
+                >
+                  {pointsValue > 0 ? `+${pointsValue}` : pointsValue} points
+                </Text>
+              </View>
+
+              <View style={styles.modalDetailRow}>
+                <Text style={[styles.modalDetailLabel, { color: theme.textSecondary }]}>
+                  Category:
+                </Text>
+                <Text style={[styles.modalDetailValue, { color: theme.text }]}>
+                  {TRANSACTION_TYPES.find((t) => t.type === selectedType)?.label || selectedType}
+                </Text>
+              </View>
+
+              <View style={styles.modalDetailRow}>
+                <Text style={[styles.modalDetailLabel, { color: theme.textSecondary }]}>
+                  Reason:
+                </Text>
+                <Text style={[styles.modalDetailValue, { color: theme.text, flex: 1 }]}>
+                  {reason.trim()}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={() => setIsConfirmModalVisible(false)}
+                disabled={isSubmitting}
+                style={{ flex: 1, marginRight: spacing.sm }}
+              />
+              <Button
+                title={isDeduction ? 'Confirm Deduct' : 'Confirm Award'}
+                variant={isDeduction ? 'danger' : 'primary'}
+                onPress={handleExecuteAllocation}
+                loading={isSubmitting}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 };
@@ -383,7 +547,29 @@ const styles = StyleSheet.create({
   selectedStudentText: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.bold,
-    marginLeft: spacing.sm,
+  },
+  emptyRosterBox: {
+    padding: spacing.md,
+    borderRadius: spacing.borderRadius.md,
+    alignItems: 'center',
+    marginVertical: spacing.xs,
+  },
+  emptyRosterText: {
+    fontSize: typography.sizes.xs,
+    textAlign: 'center',
+    marginVertical: spacing.sm,
+    lineHeight: 18,
+  },
+  goToDashBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: spacing.borderRadius.md,
+    marginTop: 4,
+  },
+  goToDashBtnText: {
+    color: '#ffffff',
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
   },
   pickerHint: {
     fontSize: typography.sizes.xs,
@@ -394,6 +580,8 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xs,
   },
   studentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: spacing.borderRadius.full,
@@ -436,5 +624,68 @@ const styles = StyleSheet.create({
   submitBtn: {
     marginTop: spacing.xs,
     marginBottom: spacing.xl,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  modalDialog: {
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: spacing.borderRadius.xl,
+    borderWidth: 1,
+    padding: spacing.lg,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.25)',
+      } as any,
+    }),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  modalTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+  },
+  modalBody: {
+    borderRadius: spacing.borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    gap: 8,
+  },
+  modalDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  modalDetailLabel: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.medium,
+    width: 75,
+  },
+  modalDetailValue: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    flex: 1,
+    textAlign: 'right',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
 });

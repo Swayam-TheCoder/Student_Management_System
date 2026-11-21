@@ -3,15 +3,18 @@
     Automated End-to-End QA Integration Test Suite for Student Management System
 .DESCRIPTION
     Validates complete system behavior against the running Spring Boot backend & PostgreSQL database:
-    1. System health and DB connectivity
+    1. System health and PostgreSQL connectivity
     2. Role-based user registration (Student & Teacher)
     3. Authentication & JWT token generation
     4. Credential security (invalid password rejection)
     5. Session restoration (/api/v1/auth/me)
     6. Role-based access control & authorization guards (401 & 403 checks)
-    7. Point management flows (awards, penalties, adjustments)
-    8. Database validation & negative balance rejection
-    9. Dynamic leaderboard ordering, tied-rank handling, and live re-ordering
+    7. Class Management (Teacher creates class, receives unique enrollment code)
+    8. Student Enrollment (Student joins class with enrollment code)
+    9. Strict Ownership Protection (Unassigned teacher award rejected with 403 Forbidden)
+    10. Point management flows (Authorized awards, penalties, adjustments)
+    11. Database validation & negative balance rejection
+    12. Dynamic leaderboard ordering, tied-rank handling, and live re-ordering
 #>
 
 param(
@@ -65,7 +68,7 @@ $studentToken = $studentAuth.data.token
 $studentProfileId = $studentAuth.data.studentProfile.id
 Write-Host "   -> Registered Student ID: $studentProfileId (Identifier: STU-$uniqueId)"
 
-# Teacher Registration
+# Teacher Registration (Main Teacher)
 $teacherReg = @{
     email = "qa.teacher.$uniqueId@school.edu"
     password = "SecurePassword123!"
@@ -82,6 +85,22 @@ Assert-Step ($teacherAuth.success -eq $true -and $teacherAuth.data.token -ne $nu
 $teacherToken = $teacherAuth.data.token
 $teacherProfileId = $teacherAuth.data.teacherProfile.id
 Write-Host "   -> Registered Teacher ID: $teacherProfileId (Employee ID: FAC-$uniqueId)"
+
+# Unassigned Teacher Registration (For authorization guard testing)
+$unassignedTeacherReg = @{
+    email = "unassigned.teacher.$uniqueId@school.edu"
+    password = "SecurePassword123!"
+    firstName = "Sarah"
+    lastName = "Connor"
+    role = "TEACHER"
+    employeeId = "FAC-UNASSIGNED-$uniqueId"
+    department = "Physics"
+    invitationCode = "TEACHER_SECRET_2026"
+} | ConvertTo-Json
+$unassignedAuth = Invoke-RestMethod -Uri "$BaseUrl/auth/register" -Method Post -ContentType "application/json" -Body $unassignedTeacherReg
+$unassignedToken = $unassignedAuth.data.token
+$unassignedHeaders = @{ Authorization = "Bearer $unassignedToken" }
+Write-Host "   -> Registered Unassigned Teacher ID: $($unassignedAuth.data.teacherProfile.id)"
 
 # --- 3. LOGIN & CREDENTIAL VALIDATION ---
 Write-Host "`n[STAGE 3] Login & Credential Security" -ForegroundColor Yellow
@@ -150,8 +169,62 @@ try {
     Assert-Step ($code -eq 403) "Student attempting to award points returns 403 Forbidden"
 }
 
-# --- 6. POINT MANAGEMENT & AUDIT LOGGING ---
-Write-Host "`n[STAGE 6] Point Management Flow (Award, Deduct, Adjust)" -ForegroundColor Yellow
+# --- 6. CLASS CREATION & ENROLLMENT (TEACHER-STUDENT LINKING) ---
+Write-Host "`n[STAGE 6] Class Creation & Enrollment (Teacher-Student Linking)" -ForegroundColor Yellow
+# Teacher creates a class
+$createClassBody = @{
+    className = "CS-301 Advanced Algorithms"
+    subject = "Computer Science"
+    section = "Section A"
+} | ConvertTo-Json
+$createdClass = Invoke-RestMethod -Uri "$BaseUrl/classes" -Method Post -ContentType "application/json" -Headers $teacherHeaders -Body $createClassBody
+Assert-Step ($createdClass.success -eq $true -and $createdClass.data.enrollmentCode -ne $null) "Teacher successfully created class with enrollment code: $($createdClass.data.enrollmentCode)"
+$classId = $createdClass.data.id
+$enrollmentCode = $createdClass.data.enrollmentCode
+
+# Verify teacher sees class in /classes/my
+$myClasses = Invoke-RestMethod -Uri "$BaseUrl/classes/my" -Method Get -Headers $teacherHeaders
+Assert-Step ($myClasses.data.Count -ge 1) "Teacher /classes/my lists created classroom"
+
+# Student joins class using enrollment code
+$joinBody = @{
+    enrollmentCode = $enrollmentCode
+} | ConvertTo-Json
+$joinRes = Invoke-RestMethod -Uri "$BaseUrl/classes/join" -Method Post -ContentType "application/json" -Headers $studentHeaders -Body $joinBody
+Assert-Step ($joinRes.success -eq $true -and $joinRes.data.classId -eq $classId) "Student Elena successfully enrolled in class using code $enrollmentCode"
+
+# Student views enrolled classes
+$studentClasses = Invoke-RestMethod -Uri "$BaseUrl/classes/enrolled" -Method Get -Headers $studentHeaders
+Assert-Step ($studentClasses.data.Count -ge 1 -and $studentClasses.data[0].teacherName -eq "Marcus Vance") "Student /classes/enrolled reflects enrolled course and teacher name"
+
+# Duplicate enrollment rejection
+try {
+    Invoke-RestMethod -Uri "$BaseUrl/classes/join" -Method Post -ContentType "application/json" -Headers $studentHeaders -Body $joinBody
+    Assert-Step $false "Duplicate enrollment must fail"
+} catch {
+    $code = $_.Exception.Response.StatusCode.value__
+    Assert-Step ($code -eq 409 -or $code -eq 400) "Duplicate class enrollment rejected with status $code"
+}
+
+# --- 7. STRICT AUTHORIZATION: UNASSIGNED TEACHER REJECTION ---
+Write-Host "`n[STAGE 7] Strict Ownership & Authorization Protection" -ForegroundColor Yellow
+# Unassigned teacher attempts to award points to Elena (not enrolled in Sarah's classes)
+try {
+    $unauthorizedAward = @{
+        studentId = $studentProfileId
+        points = 50
+        transactionType = "ACADEMIC"
+        reason = "Unauthorized cross-class point award attempt"
+    } | ConvertTo-Json
+    Invoke-RestMethod -Uri "$BaseUrl/points/award" -Method Post -ContentType "application/json" -Headers $unassignedHeaders -Body $unauthorizedAward
+    Assert-Step $false "Unassigned teacher awarding points should fail"
+} catch {
+    $code = $_.Exception.Response.StatusCode.value__
+    Assert-Step ($code -eq 403) "Unassigned teacher point award strictly rejected with 403 Forbidden"
+}
+
+# --- 8. POINT MANAGEMENT & AUDIT LOGGING ---
+Write-Host "`n[STAGE 8] Point Management Flow (Award, Deduct, Adjust)" -ForegroundColor Yellow
 # 1. Award 100 points
 $award100 = @{
     studentId = $studentProfileId
@@ -160,7 +233,7 @@ $award100 = @{
     reason = "Perfect score in Final Project demonstration"
 } | ConvertTo-Json
 $awardRes = Invoke-RestMethod -Uri "$BaseUrl/points/award" -Method Post -ContentType "application/json" -Headers $teacherHeaders -Body $award100
-Assert-Step ($awardRes.success -eq $true -and $awardRes.data.updatedTotalPoints -eq 100) "Teacher awards 100 ACADEMIC points -> balance = 100"
+Assert-Step ($awardRes.success -eq $true -and $awardRes.data.updatedTotalPoints -eq 100) "Authorized teacher awards 100 ACADEMIC points -> balance = 100"
 
 # 2. Penalty deduction -25
 $penalty25 = @{
@@ -170,7 +243,7 @@ $penalty25 = @{
     reason = "Disciplinary penalty for missed session"
 } | ConvertTo-Json
 $penaltyRes = Invoke-RestMethod -Uri "$BaseUrl/points/award" -Method Post -ContentType "application/json" -Headers $teacherHeaders -Body $penalty25
-Assert-Step ($penaltyRes.success -eq $true -and $penaltyRes.data.updatedTotalPoints -eq 75) "Teacher applies -25 PENALTY deduction -> balance = 75"
+Assert-Step ($penaltyRes.success -eq $true -and $penaltyRes.data.updatedTotalPoints -eq 75) "Authorized teacher applies -25 PENALTY deduction -> balance = 75"
 
 # 3. Manual adjustment +15
 $adjust15 = @{
@@ -180,7 +253,7 @@ $adjust15 = @{
     reason = "Correction for clerical score omission"
 } | ConvertTo-Json
 $adjustRes = Invoke-RestMethod -Uri "$BaseUrl/points/award" -Method Post -ContentType "application/json" -Headers $teacherHeaders -Body $adjust15
-Assert-Step ($adjustRes.success -eq $true -and $adjustRes.data.updatedTotalPoints -eq 90) "Teacher applies +15 ADJUSTMENT -> balance = 90"
+Assert-Step ($adjustRes.success -eq $true -and $adjustRes.data.updatedTotalPoints -eq 90) "Authorized teacher applies +15 ADJUSTMENT -> balance = 90"
 
 # 4. Student verifies updated balance & transaction ledger
 $studentProfile = Invoke-RestMethod -Uri "$BaseUrl/students/me/profile" -Method Get -Headers $studentHeaders
@@ -189,8 +262,8 @@ Assert-Step ($studentProfile.data.totalPoints -eq 90) "Student profile reflects 
 $txLedger = Invoke-RestMethod -Uri "$BaseUrl/students/$studentProfileId/transactions?page=0&size=10" -Method Get -Headers $studentHeaders
 Assert-Step ($txLedger.data.totalElements -eq 3) "Student ledger contains exactly 3 immutable transaction records"
 
-# --- 7. INPUT VALIDATION & NEGATIVE SCORE PREVENTION ---
-Write-Host "`n[STAGE 7] Validation Guards & Rollback Consistency" -ForegroundColor Yellow
+# --- 9. INPUT VALIDATION & NEGATIVE SCORE PREVENTION ---
+Write-Host "`n[STAGE 9] Validation Guards & Rollback Consistency" -ForegroundColor Yellow
 # Negative balance deduction
 try {
     $excessDeduct = @{
@@ -221,9 +294,8 @@ try {
     Assert-Step ($code -eq 404) "Awarding to non-existent student rejected with 404 Not Found"
 }
 
-# --- 8. DYNAMIC LEADERBOARD & COMPETITION RANKING ---
-Write-Host "`n[STAGE 8] Dynamic Leaderboard & Competition Ranking" -ForegroundColor Yellow
-# Register two benchmark students
+# --- 10. DYNAMIC LEADERBOARD & COMPETITION RANKING ---
+Write-Host "`n[STAGE 10] Dynamic Leaderboard & Competition Ranking" -ForegroundColor Yellow
 $stuAId = $studentProfileId # Elena, current = 90 pts
 
 # Student B
@@ -232,6 +304,8 @@ $regB = @{
 } | ConvertTo-Json
 $authB = Invoke-RestMethod -Uri "$BaseUrl/auth/register" -Method Post -ContentType "application/json" -Body $regB
 $stuBId = $authB.data.studentProfile.id
+$tokenB = $authB.data.token
+$headersB = @{ Authorization = "Bearer $tokenB" }
 
 # Student C
 $regC = @{
@@ -239,6 +313,12 @@ $regC = @{
 } | ConvertTo-Json
 $authC = Invoke-RestMethod -Uri "$BaseUrl/auth/register" -Method Post -ContentType "application/json" -Body $regC
 $stuCId = $authC.data.studentProfile.id
+$tokenC = $authC.data.token
+$headersC = @{ Authorization = "Bearer $tokenC" }
+
+# Students B and C enroll in Marcus's class
+Invoke-RestMethod -Uri "$BaseUrl/classes/join" -Method Post -ContentType "application/json" -Headers $headersB -Body $joinBody | Out-Null
+Invoke-RestMethod -Uri "$BaseUrl/classes/join" -Method Post -ContentType "application/json" -Headers $headersC -Body $joinBody | Out-Null
 
 # Award Student B and C equal scores: 150 points each
 $awardB = @{ studentId = $stuBId; points = 150; transactionType = "ACADEMIC"; reason = "Math contest" } | ConvertTo-Json

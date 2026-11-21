@@ -1,6 +1,7 @@
 package com.sms.service.impl;
 
 import com.sms.common.exception.BadRequestException;
+import com.sms.common.exception.ForbiddenException;
 import com.sms.common.exception.ResourceNotFoundException;
 import com.sms.common.response.PagedResponse;
 import com.sms.dto.request.AwardPointsRequest;
@@ -9,10 +10,13 @@ import com.sms.dto.response.PointTransactionDto;
 import com.sms.model.entity.PointTransaction;
 import com.sms.model.entity.StudentProfile;
 import com.sms.model.entity.TeacherProfile;
+import com.sms.model.enums.Role;
 import com.sms.model.enums.TransactionType;
+import com.sms.repository.ClassEnrollmentRepository;
 import com.sms.repository.PointTransactionRepository;
 import com.sms.repository.StudentProfileRepository;
 import com.sms.repository.TeacherProfileRepository;
+import com.sms.security.UserPrincipal;
 import com.sms.service.PointService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,13 +32,16 @@ public class PointServiceImpl implements PointService {
     private final StudentProfileRepository studentProfileRepository;
     private final TeacherProfileRepository teacherProfileRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final ClassEnrollmentRepository classEnrollmentRepository;
 
     public PointServiceImpl(StudentProfileRepository studentProfileRepository,
                             TeacherProfileRepository teacherProfileRepository,
-                            PointTransactionRepository pointTransactionRepository) {
+                            PointTransactionRepository pointTransactionRepository,
+                            ClassEnrollmentRepository classEnrollmentRepository) {
         this.studentProfileRepository = studentProfileRepository;
         this.teacherProfileRepository = teacherProfileRepository;
         this.pointTransactionRepository = pointTransactionRepository;
+        this.classEnrollmentRepository = classEnrollmentRepository;
     }
 
     @Override
@@ -50,6 +57,15 @@ public class PointServiceImpl implements PointService {
         // Use pessimistic lock to prevent concurrent update races on the student's score
         StudentProfile student = studentProfileRepository.findByIdWithLock(request.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException("StudentProfile", "id", request.getStudentId()));
+
+        // STRICT AUTHORIZATION: Enforce that the student is enrolled in at least one class of the teacher
+        boolean isEnrolled = classEnrollmentRepository.isStudentEnrolledInTeacherClasses(student.getId(), teacherProfileId);
+        if (!isEnrolled) {
+            throw new ForbiddenException(String.format(
+                    "Access Denied: Student '%s %s' is not enrolled in any of your classes. Teachers can only award or adjust points for enrolled students.",
+                    student.getUser().getFirstName(), student.getUser().getLastName()
+            ));
+        }
 
         int pointsDelta = request.getPoints();
         if (request.getTransactionType() == TransactionType.PENALTY && pointsDelta > 0) {
@@ -112,6 +128,22 @@ public class PointServiceImpl implements PointService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<PointTransactionDto> getStudentTransactionsForPrincipal(Long studentProfileId, UserPrincipal principal, Pageable pageable) {
+        if (principal.getRole() == Role.TEACHER) {
+            boolean isEnrolled = classEnrollmentRepository.isStudentEnrolledInTeacherClasses(studentProfileId, principal.getProfileId());
+            if (!isEnrolled) {
+                throw new ForbiddenException("Access Denied: You can only view transaction history for students enrolled in your classes.");
+            }
+        } else if (principal.getRole() == Role.STUDENT) {
+            if (!studentProfileId.equals(principal.getProfileId())) {
+                throw new ForbiddenException("Access Denied: You cannot view transaction history for other students.");
+            }
+        }
+        return getStudentTransactions(studentProfileId, pageable);
+    }
+
+    @Override
     public List<TransactionType> getTransactionTypes() {
         return Arrays.asList(TransactionType.values());
     }
@@ -134,4 +166,3 @@ public class PointServiceImpl implements PointService {
         );
     }
 }
-

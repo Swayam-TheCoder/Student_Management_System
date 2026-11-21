@@ -34,6 +34,22 @@ public interface StudentProfileRepository extends JpaRepository<StudentProfile, 
            "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')))")
     Page<StudentProfile> searchStudents(@Param("query") String query, Pageable pageable);
 
+    @Query(value = "SELECT sp FROM StudentProfile sp JOIN FETCH sp.user u WHERE " +
+           "sp.id IN (SELECT ce.student.id FROM ClassEnrollment ce WHERE ce.classRoom.teacher.id = :teacherId) AND " +
+           "(:query IS NULL OR :query = '' OR " +
+           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(sp.studentIdNumber) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')))",
+           countQuery = "SELECT COUNT(sp) FROM StudentProfile sp WHERE " +
+           "sp.id IN (SELECT ce.student.id FROM ClassEnrollment ce WHERE ce.classRoom.teacher.id = :teacherId) AND " +
+           "(:query IS NULL OR :query = '' OR " +
+           "LOWER(sp.user.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(sp.user.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(sp.studentIdNumber) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(sp.user.email) LIKE LOWER(CONCAT('%', :query, '%')))")
+    Page<StudentProfile> findTeacherEnrolledStudents(@Param("teacherId") Long teacherId, @Param("query") String query, Pageable pageable);
+
     @Query(value = "SELECT sp.id AS studentId, " +
                    "sp.student_id_number AS studentIdNumber, " +
                    "CONCAT(u.first_name, ' ', u.last_name) AS studentName, " +

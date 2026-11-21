@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { Input } from '../../components/common/Input';
@@ -65,6 +66,12 @@ export const StudentDirectoryScreen: React.FC<StudentDirectoryProps> = ({ naviga
       }
     },
     []
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchStudents(0, searchQuery, true);
+    }, [fetchStudents, searchQuery])
   );
 
   useEffect(() => {

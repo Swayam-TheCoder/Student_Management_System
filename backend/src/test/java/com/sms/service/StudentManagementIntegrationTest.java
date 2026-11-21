@@ -1,17 +1,26 @@
 package com.sms.service;
 
 import com.sms.common.exception.BadRequestException;
+import com.sms.common.exception.ForbiddenException;
 import com.sms.common.response.PagedResponse;
 import com.sms.dto.request.AwardPointsRequest;
+import com.sms.dto.request.CreateClassRequest;
+import com.sms.dto.request.JoinClassRequest;
 import com.sms.dto.response.AwardPointsResponse;
+import com.sms.dto.response.ClassEnrollmentDto;
+import com.sms.dto.response.ClassRoomDto;
 import com.sms.dto.response.LeaderboardEntryDto;
 import com.sms.dto.response.PointTransactionDto;
 import com.sms.dto.response.StudentDetailDto;
+import com.sms.model.entity.ClassEnrollment;
+import com.sms.model.entity.ClassRoom;
 import com.sms.model.entity.StudentProfile;
 import com.sms.model.entity.TeacherProfile;
 import com.sms.model.entity.User;
 import com.sms.model.enums.Role;
 import com.sms.model.enums.TransactionType;
+import com.sms.repository.ClassEnrollmentRepository;
+import com.sms.repository.ClassRoomRepository;
 import com.sms.repository.PointTransactionRepository;
 import com.sms.repository.StudentProfileRepository;
 import com.sms.repository.TeacherProfileRepository;
@@ -46,6 +55,9 @@ public class StudentManagementIntegrationTest {
     private LeaderboardService leaderboardService;
 
     @Autowired
+    private ClassService classService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -55,12 +67,20 @@ public class StudentManagementIntegrationTest {
     private TeacherProfileRepository teacherProfileRepository;
 
     @Autowired
+    private ClassRoomRepository classRoomRepository;
+
+    @Autowired
+    private ClassEnrollmentRepository classEnrollmentRepository;
+
+    @Autowired
     private PointTransactionRepository pointTransactionRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     private TeacherProfile testTeacher;
+    private TeacherProfile otherTeacher;
+    private ClassRoom testClass;
     private StudentProfile studentA;
     private StudentProfile studentB;
     private StudentProfile studentC;
@@ -69,20 +89,36 @@ public class StudentManagementIntegrationTest {
     @BeforeEach
     void setUp() {
         pointTransactionRepository.deleteAll();
+        classEnrollmentRepository.deleteAll();
+        classRoomRepository.deleteAll();
         studentProfileRepository.deleteAll();
         teacherProfileRepository.deleteAll();
         userRepository.deleteAll();
 
-        // Create a teacher
+        // Create main teacher
         User teacherUser = new User("teacher.doe@sms.com", passwordEncoder.encode("Secret123!"), "Jane", "Doe", Role.TEACHER);
         userRepository.save(teacherUser);
         testTeacher = teacherProfileRepository.save(new TeacherProfile(teacherUser, "EMP-9001", "Computer Science"));
+
+        // Create second teacher (for unauthorized access tests)
+        User otherTeacherUser = new User("other.teacher@sms.com", passwordEncoder.encode("Secret123!"), "Mark", "Smith", Role.TEACHER);
+        userRepository.save(otherTeacherUser);
+        otherTeacher = teacherProfileRepository.save(new TeacherProfile(otherTeacherUser, "EMP-9002", "Mathematics"));
+
+        // Create class for testTeacher
+        testClass = classRoomRepository.save(new ClassRoom(testTeacher, "CS-101 Data Structures", "Computer Science", "Sec A", "CS101-SEC-A"));
 
         // Create 4 students for ranking & point tests
         studentA = createTestStudent("rahul.verma@sms.com", "Rahul", "Verma", "STU-101", "Grade 11", 950);
         studentB = createTestStudent("priya.nair@sms.com", "Priya", "Nair", "STU-102", "Grade 11", 900);
         studentC = createTestStudent("amit.patel@sms.com", "Amit", "Patel", "STU-103", "Grade 11", 900);
         studentD = createTestStudent("karan.singh@sms.com", "Karan", "Singh", "STU-104", "Grade 11", 800);
+
+        // Enroll students A, B, C, D in testTeacher's class
+        classEnrollmentRepository.save(new ClassEnrollment(testClass, studentA));
+        classEnrollmentRepository.save(new ClassEnrollment(testClass, studentB));
+        classEnrollmentRepository.save(new ClassEnrollment(testClass, studentC));
+        classEnrollmentRepository.save(new ClassEnrollment(testClass, studentD));
     }
 
     private StudentProfile createTestStudent(String email, String first, String last, String studentIdNum, String grade, int points) {
@@ -94,34 +130,66 @@ public class StudentManagementIntegrationTest {
     }
 
     @Test
-    @DisplayName("Teacher can list and search students with pagination")
+    @DisplayName("Teacher can list and search only students enrolled in their classes")
     void testSearchAndListStudents() {
         // Search by first name
-        PagedResponse<StudentDetailDto> searchByName = studentService.getAllStudents(
-                "Rahul", PageRequest.of(0, 10, Sort.by("id").ascending())
+        PagedResponse<StudentDetailDto> searchByName = studentService.getTeacherStudents(
+                testTeacher.getId(), "Rahul", PageRequest.of(0, 10, Sort.by("id").ascending())
         );
         assertEquals(1, searchByName.getContent().size());
         assertEquals("Rahul", searchByName.getContent().get(0).getFirstName());
 
         // Search by student ID number
-        PagedResponse<StudentDetailDto> searchByIdNum = studentService.getAllStudents(
-                "STU-102", PageRequest.of(0, 10, Sort.by("id").ascending())
+        PagedResponse<StudentDetailDto> searchByIdNum = studentService.getTeacherStudents(
+                testTeacher.getId(), "STU-102", PageRequest.of(0, 10, Sort.by("id").ascending())
         );
         assertEquals(1, searchByIdNum.getContent().size());
         assertEquals("Priya", searchByIdNum.getContent().get(0).getFirstName());
 
-        // List all students paginated (page size = 2)
-        PagedResponse<StudentDetailDto> page0 = studentService.getAllStudents(
-                null, PageRequest.of(0, 2, Sort.by("id").ascending())
+        // List all enrolled students paginated (page size = 2)
+        PagedResponse<StudentDetailDto> page0 = studentService.getTeacherStudents(
+                testTeacher.getId(), null, PageRequest.of(0, 2, Sort.by("id").ascending())
         );
         assertEquals(2, page0.getContent().size());
         assertEquals(4, page0.getTotalElements());
         assertEquals(2, page0.getTotalPages());
         assertTrue(page0.isHasNext());
+
+        // Unassigned teacher has 0 enrolled students
+        PagedResponse<StudentDetailDto> otherTeacherStudents = studentService.getTeacherStudents(
+                otherTeacher.getId(), null, PageRequest.of(0, 10)
+        );
+        assertEquals(0, otherTeacherStudents.getTotalElements());
     }
 
     @Test
-    @DisplayName("Teacher can award points to a student and update balance inside transaction")
+    @DisplayName("Teacher can create class and student can join using enrollment code")
+    void testClassCreationAndEnrollmentFlow() {
+        // Teacher creates a new class
+        CreateClassRequest createReq = new CreateClassRequest("Physics 201", "Physics", "Sec B");
+        ClassRoomDto createdClass = classService.createClass(otherTeacher.getId(), createReq);
+
+        assertNotNull(createdClass.getId());
+        assertNotNull(createdClass.getEnrollmentCode());
+        assertEquals("Physics 201", createdClass.getClassName());
+
+        // Student A joins the new class using the generated enrollment code
+        JoinClassRequest joinReq = new JoinClassRequest(createdClass.getEnrollmentCode());
+        ClassEnrollmentDto enrollment = classService.joinClass(studentA.getId(), joinReq);
+
+        assertEquals(studentA.getId(), enrollment.getStudentId());
+        assertEquals(createdClass.getId(), enrollment.getClassId());
+
+        // Verify otherTeacher now sees student A in their enrolled roster
+        PagedResponse<StudentDetailDto> roster = studentService.getTeacherStudents(
+                otherTeacher.getId(), null, PageRequest.of(0, 10)
+        );
+        assertEquals(1, roster.getTotalElements());
+        assertEquals("Rahul", roster.getContent().get(0).getFirstName());
+    }
+
+    @Test
+    @DisplayName("Teacher can award points to an enrolled student")
     void testAwardPoints() {
         AwardPointsRequest req = new AwardPointsRequest(
                 studentA.getId(),
@@ -148,6 +216,25 @@ public class StudentManagementIntegrationTest {
         );
         assertEquals(1, txs.getContent().size());
         assertEquals("Outstanding mid-term project performance", txs.getContent().get(0).getReason());
+    }
+
+    @Test
+    @DisplayName("Unauthorized teacher attempting to award points to an unenrolled student receives ForbiddenException")
+    void testUnauthorizedTeacherPointAwardThrowsForbidden() {
+        AwardPointsRequest req = new AwardPointsRequest(
+                studentA.getId(),
+                50,
+                TransactionType.ACADEMIC,
+                "Unauthorized award attempt"
+        );
+
+        // otherTeacher does not have studentA in their classes
+        ForbiddenException ex = assertThrows(ForbiddenException.class, () ->
+                pointService.awardPoints(otherTeacher.getId(), req)
+        );
+
+        assertTrue(ex.getMessage().contains("Access Denied"));
+        assertTrue(ex.getMessage().contains("not enrolled in any of your classes"));
     }
 
     @Test
@@ -252,4 +339,3 @@ public class StudentManagementIntegrationTest {
         assertEquals(950 + (threadCount * pointsPerThread), finalStudent.getTotalPoints());
     }
 }
-

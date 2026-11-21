@@ -33,10 +33,11 @@ public class StudentController {
             @RequestParam(required = false) String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "totalPoints,desc") String sort) {
+            @RequestParam(defaultValue = "totalPoints,desc") String sort,
+            @AuthenticationPrincipal UserPrincipal principal) {
 
         Pageable pageable = createPageable(page, size, sort);
-        PagedResponse<StudentDetailDto> response = studentService.getAllStudents(query, pageable);
+        PagedResponse<StudentDetailDto> response = studentService.getTeacherStudents(principal.getProfileId(), query, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -45,7 +46,7 @@ public class StudentController {
     public ResponseEntity<ApiResponse<StudentDetailDto>> getStudentById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
-        StudentDetailDto student = studentService.getStudentById(id);
+        StudentDetailDto student = studentService.getStudentByIdForPrincipal(id, principal);
         return ResponseEntity.ok(ApiResponse.success(student));
     }
 
@@ -67,7 +68,7 @@ public class StudentController {
             @AuthenticationPrincipal UserPrincipal principal) {
 
         Pageable pageable = createPageable(page, size, sort);
-        PagedResponse<PointTransactionDto> transactions = pointService.getStudentTransactions(id, pageable);
+        PagedResponse<PointTransactionDto> transactions = pointService.getStudentTransactionsForPrincipal(id, principal, pageable);
         return ResponseEntity.ok(ApiResponse.success(transactions));
     }
 
@@ -84,4 +85,3 @@ public class StudentController {
         return PageRequest.of(safePage, safeSize, Sort.by(direction, sortField));
     }
 }
-
