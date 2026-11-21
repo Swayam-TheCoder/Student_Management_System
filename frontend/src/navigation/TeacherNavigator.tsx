@@ -7,6 +7,7 @@ import { TeacherDashboardScreen } from '../features/teacher/TeacherDashboardScre
 import { StudentDirectoryScreen } from '../features/teacher/StudentDirectoryScreen';
 import { AwardPointsScreen } from '../features/teacher/AwardPointsScreen';
 import { StudentDetailsScreen } from '../features/teacher/StudentDetailsScreen';
+import { ClassDetailsScreen } from '../features/teacher/ClassDetailsScreen';
 import { LeaderboardScreen } from '../features/leaderboard/LeaderboardScreen';
 import { SettingsScreen } from '../features/settings/SettingsScreen';
 import { TeacherStackParamList, TeacherTabParamList } from '../types/navigation';
@@ -114,6 +115,11 @@ export const TeacherNavigator: React.FC = () => {
         name="StudentDetails"
         component={StudentDetailsScreen}
         options={{ title: 'Student Dossier' }}
+      />
+      <Stack.Screen
+        name="ClassDetails"
+        component={ClassDetailsScreen}
+        options={{ title: 'Class Management' }}
       />
     </Stack.Navigator>
   );

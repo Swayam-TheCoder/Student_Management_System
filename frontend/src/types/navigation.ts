@@ -24,6 +24,7 @@ export type TeacherTabParamList = {
 export type TeacherStackParamList = {
   TeacherTabs: NavigatorScreenParams<TeacherTabParamList>;
   StudentDetails: { studentId: number };
+  ClassDetails: { classId: number };
 };
 
 export type RootStackParamList = {
@@ -32,4 +33,3 @@ export type RootStackParamList = {
   StudentApp: NavigatorScreenParams<StudentTabParamList>;
   TeacherApp: NavigatorScreenParams<TeacherStackParamList>;
 };
-

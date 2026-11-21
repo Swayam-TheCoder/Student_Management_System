@@ -7,7 +7,7 @@ import com.sms.dto.request.CreateClassRequest;
 import com.sms.dto.request.JoinClassRequest;
 import com.sms.dto.response.ClassEnrollmentDto;
 import com.sms.dto.response.ClassRoomDto;
-import com.sms.dto.response.StudentDetailDto;
+import com.sms.dto.response.ClassStudentDto;
 import com.sms.model.entity.ClassEnrollment;
 import com.sms.model.entity.ClassRoom;
 import com.sms.model.entity.StudentProfile;
@@ -99,6 +99,62 @@ public class ClassServiceImpl implements ClassService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ClassRoomDto getClassById(Long teacherProfileId, Long classId) {
+        ClassRoom classRoom = classRoomRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("ClassRoom", "id", classId));
+
+        if (!classRoom.getTeacher().getId().equals(teacherProfileId)) {
+            throw new ForbiddenException("Access Denied: You do not have access to this classroom.");
+        }
+
+        long studentCount = classEnrollmentRepository.countByClassRoomId(classId);
+        String teacherName = classRoom.getTeacher().getUser().getFirstName() + " " + classRoom.getTeacher().getUser().getLastName();
+
+        return new ClassRoomDto(
+                classRoom.getId(),
+                classRoom.getClassName(),
+                classRoom.getSubject(),
+                classRoom.getSection(),
+                classRoom.getEnrollmentCode(),
+                classRoom.getTeacher().getId(),
+                teacherName,
+                studentCount,
+                classRoom.getCreatedAt()
+        );
+    }
+
+    @Override
+    @Transactional
+    public ClassRoomDto regenerateEnrollmentCode(Long teacherProfileId, Long classId) {
+        ClassRoom classRoom = classRoomRepository.findById(classId)
+                .orElseThrow(() -> new ResourceNotFoundException("ClassRoom", "id", classId));
+
+        if (!classRoom.getTeacher().getId().equals(teacherProfileId)) {
+            throw new ForbiddenException("Access Denied: You cannot modify this classroom.");
+        }
+
+        String newCode = generateUniqueCode();
+        classRoom.setEnrollmentCode(newCode);
+        ClassRoom updated = classRoomRepository.save(classRoom);
+
+        long studentCount = classEnrollmentRepository.countByClassRoomId(classId);
+        String teacherName = updated.getTeacher().getUser().getFirstName() + " " + updated.getTeacher().getUser().getLastName();
+
+        return new ClassRoomDto(
+                updated.getId(),
+                updated.getClassName(),
+                updated.getSubject(),
+                updated.getSection(),
+                updated.getEnrollmentCode(),
+                updated.getTeacher().getId(),
+                teacherName,
+                studentCount,
+                updated.getCreatedAt()
+        );
+    }
+
+    @Override
     @Transactional
     public ClassEnrollmentDto joinClass(Long studentProfileId, JoinClassRequest request) {
         String cleanCode = request.getEnrollmentCode().trim().toUpperCase();
@@ -159,7 +215,7 @@ public class ClassServiceImpl implements ClassService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StudentDetailDto> getClassStudents(Long teacherProfileId, Long classId) {
+    public List<ClassStudentDto> getClassStudents(Long teacherProfileId, Long classId, String query) {
         ClassRoom classRoom = classRoomRepository.findById(classId)
                 .orElseThrow(() -> new ResourceNotFoundException("ClassRoom", "id", classId));
 
@@ -168,22 +224,34 @@ public class ClassServiceImpl implements ClassService {
         }
 
         List<ClassEnrollment> enrollments = classEnrollmentRepository.findByClassRoomIdWithStudentDetails(classId);
-        return enrollments.stream().map(ce -> {
-            StudentProfile profile = ce.getStudent();
-            User user = profile.getUser();
-            return new StudentDetailDto(
-                    profile.getId(),
-                    user.getId(),
-                    profile.getStudentIdNumber(),
-                    user.getFirstName(),
-                    user.getLastName(),
-                    user.getEmail(),
-                    profile.getGradeLevel(),
-                    profile.getTotalPoints(),
-                    profile.getCreatedAt(),
-                    profile.getUpdatedAt()
-            );
-        }).toList();
+
+        String trimmedQuery = (query != null && !query.trim().isEmpty()) ? query.trim().toLowerCase() : null;
+
+        return enrollments.stream()
+                .filter(ce -> {
+                    if (trimmedQuery == null) return true;
+                    StudentProfile sp = ce.getStudent();
+                    User u = sp.getUser();
+                    String fullName = (u.getFirstName() + " " + u.getLastName()).toLowerCase();
+                    String idNum = sp.getStudentIdNumber().toLowerCase();
+                    return fullName.contains(trimmedQuery) || idNum.contains(trimmedQuery);
+                })
+                .map(ce -> {
+                    StudentProfile profile = ce.getStudent();
+                    User user = profile.getUser();
+                    return new ClassStudentDto(
+                            ce.getId(),
+                            profile.getId(),
+                            user.getId(),
+                            profile.getStudentIdNumber(),
+                            user.getFirstName(),
+                            user.getLastName(),
+                            user.getEmail(),
+                            profile.getGradeLevel(),
+                            profile.getTotalPoints(),
+                            ce.getEnrolledAt()
+                    );
+                }).toList();
     }
 
     private String generateUniqueCode() {
@@ -198,7 +266,6 @@ public class ClassServiceImpl implements ClassService {
                 return code;
             }
         }
-        // Fallback with timestamp
-        return "CLS-" + System.currentTimeMillis() % 1000000;
+        return "CLS-" + (System.currentTimeMillis() % 1000000);
     }
 }

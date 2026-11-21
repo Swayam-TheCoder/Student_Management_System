@@ -189,6 +189,50 @@ public class StudentManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Teacher can view class details and roster with strict authorization")
+    void testClassDetailsAndRosterSecurity() {
+        // testTeacher views their class details
+        ClassRoomDto classDetails = classService.getClassById(testTeacher.getId(), testClass.getId());
+        assertEquals(testClass.getClassName(), classDetails.getClassName());
+        assertEquals(4, classDetails.getStudentCount());
+
+        // otherTeacher cannot view testTeacher's class
+        assertThrows(ForbiddenException.class, () ->
+                classService.getClassById(otherTeacher.getId(), testClass.getId())
+        );
+
+        // testTeacher views enrolled students in testClass
+        List<com.sms.dto.response.ClassStudentDto> classStudents = classService.getClassStudents(
+                testTeacher.getId(), testClass.getId(), null
+        );
+        assertEquals(4, classStudents.size());
+        assertNotNull(classStudents.get(0).getEnrolledAt());
+
+        // Search within class roster
+        List<com.sms.dto.response.ClassStudentDto> searched = classService.getClassStudents(
+                testTeacher.getId(), testClass.getId(), "Rahul"
+        );
+        assertEquals(1, searched.size());
+        assertEquals("Rahul", searched.get(0).getFirstName());
+
+        // otherTeacher cannot access testClass roster
+        assertThrows(ForbiddenException.class, () ->
+                classService.getClassStudents(otherTeacher.getId(), testClass.getId(), null)
+        );
+
+        // testTeacher regenerates enrollment code
+        String oldCode = testClass.getEnrollmentCode();
+        ClassRoomDto regenerated = classService.regenerateEnrollmentCode(testTeacher.getId(), testClass.getId());
+        assertNotEquals(oldCode, regenerated.getEnrollmentCode());
+        assertEquals(4, regenerated.getStudentCount()); // Existing enrollments remain intact!
+
+        // otherTeacher cannot regenerate code for testTeacher's class
+        assertThrows(ForbiddenException.class, () ->
+                classService.regenerateEnrollmentCode(otherTeacher.getId(), testClass.getId())
+        );
+    }
+
+    @Test
     @DisplayName("Teacher can award points to an enrolled student")
     void testAwardPoints() {
         AwardPointsRequest req = new AwardPointsRequest(

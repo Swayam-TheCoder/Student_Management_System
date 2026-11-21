@@ -26,6 +26,7 @@ import { classApi } from '../../api/classApi';
 import { LeaderboardEntry } from '../../types/leaderboard';
 import { ClassRoom } from '../../types/class';
 import { TeacherTabParamList, TeacherStackParamList } from '../../types/navigation';
+import { formatDate } from '../../utils/formatters';
 import { spacing, typography } from '../../theme';
 
 type TeacherDashboardNavProp = CompositeNavigationProp<
@@ -301,57 +302,85 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardProps> = ({ naviga
           </Card>
         ) : (
           classes.map((cls) => (
-            <Card key={cls.id} style={styles.classCard}>
-              <View style={styles.classCardRow}>
-                <View
-                  style={[
-                    styles.classIconBox,
-                    { backgroundColor: theme.primaryLight },
-                  ]}
-                >
-                  <Ionicons name="school" size={20} color={theme.primary} />
-                </View>
-
-                <View style={styles.classInfo}>
-                  <Text style={[styles.className, { color: theme.text }]}>
-                    {cls.className}
-                  </Text>
-                  <Text style={[styles.classMeta, { color: theme.textSecondary }]}>
-                    {cls.subject} • {cls.section} • {cls.studentCount} {cls.studentCount === 1 ? 'Student' : 'Students'}
-                  </Text>
-                </View>
-
-                {/* Enrollment Code Pill */}
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => handleCopyCode(cls.enrollmentCode)}
-                  style={[
-                    styles.codeBadge,
-                    {
-                      backgroundColor: copiedCode === cls.enrollmentCode ? theme.successLight : theme.inputBackground,
-                      borderColor: copiedCode === cls.enrollmentCode ? theme.success : theme.border,
-                    },
-                    Platform.select({ web: { cursor: 'pointer' } as any }),
-                  ]}
-                >
-                  <Ionicons
-                    name={copiedCode === cls.enrollmentCode ? 'checkmark' : 'copy-outline'}
-                    size={14}
-                    color={copiedCode === cls.enrollmentCode ? theme.success : theme.primary}
-                  />
-                  <Text
+            <TouchableOpacity
+              key={cls.id}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('ClassDetails', { classId: cls.id })}
+              style={[
+                styles.classCardWrapper,
+                Platform.select({ web: { cursor: 'pointer' } as any }),
+              ]}
+            >
+              <Card style={styles.classCard}>
+                <View style={styles.classCardRow}>
+                  <View
                     style={[
-                      styles.codeBadgeText,
-                      {
-                        color: copiedCode === cls.enrollmentCode ? theme.success : theme.primary,
-                      },
+                      styles.classIconBox,
+                      { backgroundColor: theme.primaryLight },
                     ]}
                   >
-                    {copiedCode === cls.enrollmentCode ? 'Copied!' : cls.enrollmentCode}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </Card>
+                    <Ionicons name="school" size={20} color={theme.primary} />
+                  </View>
+
+                  <View style={styles.classInfo}>
+                    <Text style={[styles.className, { color: theme.text }]}>
+                      {cls.className}
+                    </Text>
+                    <Text style={[styles.classMeta, { color: theme.textSecondary }]}>
+                      {cls.subject} • {cls.section} • {cls.studentCount} {cls.studentCount === 1 ? 'Student' : 'Students'}
+                    </Text>
+                    {cls.createdAt ? (
+                      <Text style={[styles.classCreatedDate, { color: theme.textMuted }]}>
+                        Created {formatDate(cls.createdAt)}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  {/* Enrollment Code Pill */}
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={(e) => {
+                      if (Platform.OS === 'web' && e && (e as any).stopPropagation) {
+                        (e as any).stopPropagation();
+                      }
+                      handleCopyCode(cls.enrollmentCode);
+                    }}
+                    style={[
+                      styles.codeBadge,
+                      {
+                        backgroundColor: copiedCode === cls.enrollmentCode ? theme.successLight : theme.inputBackground,
+                        borderColor: copiedCode === cls.enrollmentCode ? theme.success : theme.border,
+                      },
+                      Platform.select({ web: { cursor: 'pointer' } as any }),
+                    ]}
+                  >
+                    <Ionicons
+                      name={copiedCode === cls.enrollmentCode ? 'checkmark' : 'copy-outline'}
+                      size={14}
+                      color={copiedCode === cls.enrollmentCode ? theme.success : theme.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.codeBadgeText,
+                        {
+                          color: copiedCode === cls.enrollmentCode ? theme.success : theme.primary,
+                        },
+                      ]}
+                    >
+                      {copiedCode === cls.enrollmentCode ? 'Copied!' : cls.enrollmentCode}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Chevron Right Indicator */}
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={theme.textMuted}
+                    style={{ marginLeft: 8 }}
+                  />
+                </View>
+              </Card>
+            </TouchableOpacity>
           ))
         )}
 
@@ -641,8 +670,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     maxWidth: 360,
   },
-  classCard: {
+  classCardWrapper: {
     marginBottom: spacing.sm,
+  },
+  classCard: {
     padding: spacing.md,
   },
   classCardRow: {
@@ -667,6 +698,10 @@ const styles = StyleSheet.create({
   },
   classMeta: {
     fontSize: typography.sizes.xs,
+    marginTop: 2,
+  },
+  classCreatedDate: {
+    fontSize: 11,
     marginTop: 2,
   },
   codeBadge: {

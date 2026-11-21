@@ -23,6 +23,11 @@ desktop.ini
 .project
 .classpath
 
+# Backups
+backups/
+*.dump
+*.sql
+
 # Logs
 *.log
 npm-debug.log*
