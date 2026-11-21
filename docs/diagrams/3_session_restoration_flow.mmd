@@ -1,0 +1,60 @@
+flowchart TD
+    classDef clientStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef backendStyle fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef decisionStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#0f172a,rx:6,ry:6
+    classDef errorStyle fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef successStyle fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef actorStyle fill:#f8fafc,stroke:#475569,stroke-width:2px,color:#0f172a,rx:20,ry:20
+
+    Start(["📱 App Cold Start / Browser Reload"]):::actorStyle
+    Splash["📱 SplashScreen Displayed<br/>(Loading Indicator & Logo)"]:::clientStyle
+    Thunk["⚡ Redux: dispatch(restoreAuth())"]:::clientStyle
+    ReadStorage["🔐 SecureStore.getToken()<br/>(Key: 'sms_auth_token')"]:::clientStyle
+
+    TokenCheck{"Token Exists in<br/>Secure Storage?"}:::decisionStyle
+
+    %% Path A: No token
+    NoTokenAction["🧹 Reset Auth State in Redux<br/>(isAuthenticated = false)"]:::clientStyle
+    NavLogin["🚪 Navigate to LoginScreen<br/>(AuthNavigator)"]:::clientStyle
+
+    %% Path B: Token found
+    AxiosCall["🌐 Axios: GET /api/v1/auth/me<br/>(Headers: Authorization: Bearer token)"]:::clientStyle
+    JWTFilter["🔑 JwtAuthenticationFilter<br/>(Validate Signature & Expiration)"]:::backendStyle
+    TokenValid{"Token Valid &<br/>Not Expired?"}:::decisionStyle
+
+    %% Failure Path
+    Auth401["⛔ HTTP 401 Unauthorized<br/>(JwtAuthenticationEntryPoint)"]:::errorStyle
+    PurgeToken["🧹 Axios 401 Interceptor:<br/>SecureStore.removeToken()"]:::errorStyle
+
+    %% Success Path
+    AuthSvc["⚙️ AuthServiceImpl.getCurrentUserProfile()<br/>(Fetch User + StudentProfile / TeacherProfile)"]:::backendStyle
+    Response["📤 HTTP 200 OK<br/>(ApiResponse<UserProfileResponse>)"]:::successStyle
+    ReduxHydrate["⚡ Redux authSlice Hydration:<br/>• state.user = payload.user<br/>• state.studentProfile = ...<br/>• state.teacherProfile = ...<br/>• state.isAuthenticated = true<br/>• state.isRestoringAuth = false"]:::successStyle
+
+    RoleRouter{"User Role?"}:::decisionStyle
+    StudentNav["🎓 StudentNavigator<br/>(Dashboard, Leaderboard, History, Profile)"]:::successStyle
+    TeacherNav["👨‍🏫 TeacherNavigator<br/>(Dashboard, Directory, Award, Dossier)"]:::successStyle
+
+    Start --> Splash
+    Splash --> Thunk
+    Thunk --> ReadStorage
+    ReadStorage --> TokenCheck
+
+    TokenCheck -- "No Token" --> NoTokenAction
+    NoTokenAction --> NavLogin
+
+    TokenCheck -- "Token Found" --> AxiosCall
+    AxiosCall --> JWTFilter
+    JWTFilter --> TokenValid
+
+    TokenValid -- "Invalid / Expired" --> Auth401
+    Auth401 --> PurgeToken
+    PurgeToken --> NoTokenAction
+
+    TokenValid -- "Token Valid" --> AuthSvc
+    AuthSvc --> Response
+    Response --> ReduxHydrate
+    ReduxHydrate --> RoleRouter
+
+    RoleRouter -- "STUDENT" --> StudentNav
+    RoleRouter -- "TEACHER" --> TeacherNav

@@ -1,16 +1,23 @@
 import { Platform } from 'react-native';
 import { secureStorage } from './secureStorage';
 
-const DEFAULT_LAN_IP = '10.46.187.163';
 const BACKEND_PORT = '8080';
-
-const CUSTOM_API_URL_KEY = 'sms_custom_api_url';
+const DEFAULT_FALLBACK_LAN_IP = '10.46.187.163';
 
 export const getDefaultBaseUrl = (): string => {
+  // 1. If explicit environment variable is provided, respect it
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+
+  // 2. Web browser: use localhost directly
   if (Platform.OS === 'web') {
     return `http://localhost:${BACKEND_PORT}/api/v1`;
   }
-  return `http://${DEFAULT_LAN_IP}:${BACKEND_PORT}/api/v1`;
+
+  // 3. Native mobile: use LAN IP or configurable IP
+  const lanIp = process.env.EXPO_PUBLIC_LAN_IP || DEFAULT_FALLBACK_LAN_IP;
+  return `http://${lanIp}:${BACKEND_PORT}/api/v1`;
 };
 
 export const getActiveBaseUrl = async (): Promise<string> => {

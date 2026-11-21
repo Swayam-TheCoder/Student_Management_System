@@ -1,0 +1,56 @@
+flowchart TD
+    classDef clientStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef securityStyle fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef backendStyle fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef dbStyle fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef actorStyle fill:#f8fafc,stroke:#475569,stroke-width:2px,color:#0f172a,rx:20,ry:20
+    classDef storageStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#0f172a,rx:8,ry:8
+
+    User(["👤 Student / Teacher Actor"]):::actorStyle
+
+    subgraph Frontend["Frontend Client (React Native / Expo SDK 51)"]
+        UI["📱 UI Screens & Layouts<br/>(Auth, Student & Teacher Navigators)"]:::clientStyle
+        Theme["🎨 ThemeContext<br/>(Light / Dark Mode State)"]:::clientStyle
+        Redux["⚡ Redux Toolkit Store<br/>(authSlice & leaderboardSlice)"]:::clientStyle
+        Storage["🔐 SecureStore / LocalStorage<br/>(Hardware-Backed Encrypted Storage)"]:::storageStyle
+        Axios["🌐 Axios HTTP Client<br/>(Dynamic Base URL & JWT Interceptors)"]:::clientStyle
+    end
+
+    subgraph Security["Spring Security 6 Gateway (Stateless Filter Chain)"]
+        CORS["🛡️ CorsConfigurationSource<br/>(Origin, Headers & Method Rules)"]:::securityStyle
+        JWTFilter["🔑 JwtAuthenticationFilter<br/>(Bearer Token & Claims Verification)"]:::securityStyle
+        EntryPoint["⛔ JwtAuthenticationEntryPoint<br/>(401 Unauthorized / 403 Forbidden)"]:::securityStyle
+    end
+
+    subgraph Backend["Spring Boot 3.3.5 Backend (Controller-Service-Repository)"]
+        Controllers["🎮 REST Controllers<br/>(AuthController, StudentController,<br/>PointController, LeaderboardController)"]:::backendStyle
+        Services["⚙️ Service Layer<br/>(AuthServiceImpl, StudentServiceImpl,<br/>PointServiceImpl, LeaderboardServiceImpl)"]:::backendStyle
+        Repos["💾 Repository Layer<br/>(Spring Data JPA with Pessimistic Locking)"]:::backendStyle
+    end
+
+    subgraph Database["PostgreSQL 18 Relational Database"]
+        Users[("👥 users<br/>(ID, Email, BCrypt Hash, Role)")]:::dbStyle
+        Students[("🎓 student_profiles<br/>(Student ID, Grade, Points)")]:::dbStyle
+        Teachers[("👨‍🏫 teacher_profiles<br/>(Employee ID, Department)")]:::dbStyle
+        Points[("📜 point_transactions<br/>(Student FK, Teacher FK, Delta, Reason)")]:::dbStyle
+    end
+
+    User -->|"Interacts with Screen"| UI
+    UI -->|"Reads Color Tokens"| Theme
+    UI -->|"Dispatches Actions & Thunks"| Redux
+    Redux -->|"Persists Token & Theme"| Storage
+    Redux -->|"Triggers Network Calls"| Axios
+    Axios -.->|"Reads Token for Authorization Header"| Storage
+    Axios -->|"HTTP REST API Calls (Bearer JWT)"| CORS
+    
+    CORS --> JWTFilter
+    JWTFilter -.->|"Invalid or Missing Token"| EntryPoint
+    JWTFilter -->|"Populates SecurityContext"| Controllers
+    
+    Controllers -->|"Delegates Business Logic"| Services
+    Services -->|"Atomic Transactions (@Transactional)"| Repos
+    
+    Repos -->|"CRUD & User Authentication"| Users
+    Repos -->|"Pessimistic Write Row Locking"| Students
+    Repos -->|"Faculty Profile Association"| Teachers
+    Repos -->|"Immutable Point Audit Ledger"| Points

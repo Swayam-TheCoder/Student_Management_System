@@ -1,0 +1,63 @@
+flowchart TD
+    classDef clientStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef backendStyle fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef decisionStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#0f172a,rx:6,ry:6
+    classDef errorStyle fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef successStyle fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef actorStyle fill:#f8fafc,stroke:#475569,stroke-width:2px,color:#0f172a,rx:20,ry:20
+    classDef atomicStyle fill:#f1f5f9,stroke:#6366f1,stroke-width:2px,stroke-dasharray: 5 5,color:#0f172a,rx:10,ry:10
+
+    Teacher(["👨‍🏫 Faculty Member"]):::actorStyle
+    Screen["📱 AwardPointsScreen<br/>1. Select Student from roster<br/>2. Pick Category (e.g. ACADEMIC)<br/>3. Choose points (+50, -25, custom)<br/>4. Enter mandatory reason"]:::clientStyle
+    ConfirmModal["⚠️ Confirmation Alert Dialog<br/>(Verify Student, Amount & Reason)"]:::clientStyle
+    AxiosReq["🌐 Axios: POST /api/v1/points/award<br/>(Bearer JWT Token Attached)"]:::clientStyle
+
+    RoleCheck{"@PreAuthorize<br/>hasRole('TEACHER')?"}:::decisionStyle
+    Forbidden403["⛔ HTTP 403 Forbidden<br/>(Access Denied)"]:::errorStyle
+
+    subgraph AtomicTx["🔒 Atomic Database Transaction (@Transactional)"]
+        TeacherLookup["🔎 Lookup Teacher Profile<br/>(teacherProfileRepository.findById)"]:::backendStyle
+        TeacherFound{"Teacher<br/>Exists?"}:::decisionStyle
+        
+        PessimisticLock["🔐 Pessimistic Write Row Locking<br/>SELECT s FROM StudentProfile s<br/>WHERE s.id = :id FOR UPDATE<br/>(Prevents Concurrent Lost Updates)"]:::backendStyle
+        StudentFound{"Student<br/>Exists?"}:::decisionStyle
+
+        CalcDelta["🧮 Compute Points Delta:<br/>if (PENALTY && points > 0) delta = -points<br/>newTotal = currentTotal + delta"]:::backendStyle
+        
+        BalanceCheck{"newTotal >= 0?"}:::decisionStyle
+        NegativeError["❌ Throw BadRequestException:<br/>'Insufficient points: cannot deduct<br/>X points from balance Y'"]:::errorStyle
+        Rollback["↩️ Transaction Rollback<br/>(Release Database Locks)"]:::errorStyle
+
+        SaveAudit["📜 Save PointTransaction Record:<br/>• student FK, teacher FK<br/>• pointsDelta, transactionType, reason<br/>• createdAt timestamp"]:::backendStyle
+        UpdateBalance["💾 Update StudentProfile:<br/>total_points = newTotal<br/>updatedAt = CURRENT_TIMESTAMP"]:::backendStyle
+        Commit["✅ Database Commit & Lock Release"]:::successStyle
+    end
+
+    NotFound404["❌ HTTP 404 Not Found<br/>(ResourceNotFoundException)"]:::errorStyle
+    Response["📤 HTTP 200 OK<br/>(AwardPointsResponse: newTotalPoints, txDto)"]:::successStyle
+    ReduxRefresh["⚡ Redux: dispatch(refreshLeaderboard())<br/>(Invalidates stale cached rankings)"]:::clientStyle
+    BannerSuccess["🎉 UI: Display Confirmation Banner<br/>'Success! New balance: X pts'"]:::successStyle
+
+    Teacher --> Screen
+    Screen --> ConfirmModal
+    ConfirmModal --> AxiosReq
+    AxiosReq --> RoleCheck
+    RoleCheck -- "No" --> Forbidden403
+    RoleCheck -- "Yes" --> TeacherLookup
+    TeacherLookup --> TeacherFound
+    TeacherFound -- "No" --> NotFound404
+    TeacherFound -- "Yes" --> PessimisticLock
+    PessimisticLock --> StudentFound
+    StudentFound -- "No" --> NotFound404
+    StudentFound -- "Yes" --> CalcDelta
+    CalcDelta --> BalanceCheck
+
+    BalanceCheck -- "Negative Balance" --> NegativeError
+    NegativeError --> Rollback
+
+    BalanceCheck -- "Valid Score" --> SaveAudit
+    SaveAudit --> UpdateBalance
+    UpdateBalance --> Commit
+    Commit --> Response
+    Response --> ReduxRefresh
+    ReduxRefresh --> BannerSuccess

@@ -1,0 +1,44 @@
+flowchart TD
+    classDef clientStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef backendStyle fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef dbStyle fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef successStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef actorStyle fill:#f8fafc,stroke:#475569,stroke-width:2px,color:#0f172a,rx:20,ry:20
+
+    User(["👤 Authenticated Student or Teacher"]):::actorStyle
+    Screen["📱 LeaderboardScreen Mounted<br/>(or User Pulls to Refresh)"]:::clientStyle
+    Thunk["⚡ Redux Thunk: dispatch(fetchLeaderboard({ page, size: 20 }))"]:::clientStyle
+    AxiosReq["🌐 Axios: GET /api/v1/leaderboard?page=0&size=20<br/>(Bearer JWT Header)"]:::clientStyle
+
+    Ctrl["🎮 LeaderboardController.getLeaderboard()<br/>(@PreAuthorize('isAuthenticated()'))"]:::backendStyle
+    Svc["⚙️ LeaderboardServiceImpl.getLeaderboard()<br/>(Sanitizes page >= 0, size <= 100)"]:::backendStyle
+    Repo["💾 StudentProfileRepository.getLeaderboard()"]:::backendStyle
+
+    subgraph PostgresWindow["PostgreSQL 18 Window Function Evaluation"]
+        Query["📊 Native SQL Query:<br/>SELECT sp.id AS studentId, sp.student_id_number,<br/>CONCAT(u.first_name, ' ', u.last_name) AS studentName,<br/>sp.grade_level, sp.total_points,<br/><b>RANK() OVER (ORDER BY sp.total_points DESC) AS rank</b><br/>FROM student_profiles sp JOIN users u ON sp.user_id = u.id<br/>WHERE u.is_active = true<br/>ORDER BY sp.total_points DESC, sp.id ASC"]:::dbStyle
+        
+        RankRules["🏆 Standard Competition Ranking Rules:<br/>• Student A: 290 pts ➔ <b>Rank #1</b><br/>• Student B: 150 pts ➔ <b>Rank #2</b><br/>• Student C: 150 pts ➔ <b>Rank #2 (Tied)</b><br/>• Student D: 90 pts ➔ <b>Rank #4 (Rank 3 Skipped)</b>"]:::dbStyle
+    end
+
+    PageEnvelope["📦 PagedResponse&lt;LeaderboardEntryDto&gt;:<br/>• content: List of ranked student entries<br/>• page, size, totalElements, totalPages, isLast"]:::backendStyle
+    Response["📤 HTTP 200 OK Response"]:::backendStyle
+
+    subgraph UIComponents["Mobile & Web Rendering"]
+        ReduxStore["⚡ Redux leaderboardSlice Updated<br/>(Caches entries, handles infinite scroll pagination)"]:::clientStyle
+        Podium["🥇 PodiumCard Component (Top 3):<br/>• Place 2 Stand (Silver - Left)<br/>• Place 1 Stand (Gold - Elevated Center)<br/>• Place 3 Stand (Bronze - Right)<br/>• Constrained maxWidth: 480px Centered"]:::successStyle
+        ListRows["📋 FlatList LeaderboardRow Components:<br/>• Rank Circle (#1, #2, #3, #4...)<br/>• Student Name & Grade Level<br/>• Total Points Pill (pts)<br/>• <b>'YOU' Highlight Badge</b> for current student"]:::clientStyle
+    end
+
+    User --> Screen
+    Screen --> Thunk
+    Thunk --> AxiosReq
+    AxiosReq --> Ctrl
+    Ctrl --> Svc
+    Svc --> Repo
+    Repo --> Query
+    Query --> RankRules
+    RankRules --> PageEnvelope
+    PageEnvelope --> Response
+    Response --> ReduxStore
+    ReduxStore --> Podium
+    ReduxStore --> ListRows

@@ -1,0 +1,70 @@
+flowchart TD
+    classDef clientStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef backendStyle fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef decisionStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#0f172a,rx:6,ry:6
+    classDef errorStyle fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef successStyle fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#0f172a,rx:8,ry:8
+    classDef actorStyle fill:#f8fafc,stroke:#475569,stroke-width:2px,color:#0f172a,rx:20,ry:20
+
+    User(["👤 New User"]):::actorStyle
+    Screen["📱 RegisterScreen<br/>(Role Selection & Input Form)"]:::clientStyle
+    ZodValidate{"Client Validation<br/>(Zod Schema)"}:::decisionStyle
+    ValidationError["❌ Display Field Validation Error"]:::errorStyle
+    AxiosReq["🌐 Axios: POST /api/v1/auth/register"]:::clientStyle
+    AuthCtrl["🎮 AuthController.register()"]:::backendStyle
+    AuthSvc["⚙️ AuthServiceImpl.register()"]:::backendStyle
+
+    RoleCheck{"Selected Role?"}:::decisionStyle
+
+    %% Student Branch
+    StudentFields["🎓 Student Payload:<br/>• studentIdNumber<br/>• gradeLevel"]:::clientStyle
+    StudentIdDup{"Student ID<br/>Already Exists?"}:::decisionStyle
+
+    %% Teacher Branch
+    TeacherFields["👨‍🏫 Teacher Payload:<br/>• employeeId<br/>• department<br/>• invitationCode"]:::clientStyle
+    SecretCheck{"Invitation Code ==<br/>'TEACHER_SECRET_2026'?"}:::decisionStyle
+    SecretError["❌ HTTP 400 Bad Request<br/>(Invalid Invitation Code)"]:::errorStyle
+    TeacherIdDup{"Employee ID<br/>Already Exists?"}:::decisionStyle
+
+    EmailDup{"Email Already<br/>Registered?"}:::decisionStyle
+    ConflictError["❌ HTTP 409 Conflict<br/>(Duplicate Resource)"]:::errorStyle
+
+    BCrypt["🔒 Hash Password with BCrypt<br/>(12 Salt Rounds)"]:::backendStyle
+    DBSave["💾 Save to PostgreSQL:<br/>1. Insert users record<br/>2. Insert student/teacher profile"]:::backendStyle
+    JWTGen["🔑 JwtTokenProvider.generateToken()<br/>(Subject, Role, Profile ID, Expiry)"]:::backendStyle
+    Response["📤 HTTP 201 Created<br/>(ApiResponse with AuthResponse)"]:::backendStyle
+    PersistToken["🔐 SecureStore.saveToken(token)<br/>(Hardware-backed on device)"]:::clientStyle
+    ReduxState["⚡ Redux authSlice:<br/>isAuthenticated = true"]:::clientStyle
+    NavDashboard["🚀 Navigate to Role Dashboard<br/>(StudentTabs or TeacherTabs)"]:::successStyle
+
+    User --> Screen
+    Screen --> ZodValidate
+    ZodValidate -- "Invalid Inputs" --> ValidationError
+    ZodValidate -- "Valid Form" --> AxiosReq
+    AxiosReq --> AuthCtrl
+    AuthCtrl --> AuthSvc
+    AuthSvc --> RoleCheck
+
+    %% Student Path
+    RoleCheck -- "STUDENT" --> StudentFields
+    StudentFields --> StudentIdDup
+    StudentIdDup -- "Yes" --> ConflictError
+    StudentIdDup -- "No" --> EmailDup
+
+    %% Teacher Path
+    RoleCheck -- "TEACHER" --> TeacherFields
+    TeacherFields --> SecretCheck
+    SecretCheck -- "No" --> SecretError
+    SecretCheck -- "Yes" --> TeacherIdDup
+    TeacherIdDup -- "Yes" --> ConflictError
+    TeacherIdDup -- "No" --> EmailDup
+
+    %% Common Convergence
+    EmailDup -- "Duplicate Email" --> ConflictError
+    EmailDup -- "Email Unique" --> BCrypt
+    BCrypt --> DBSave
+    DBSave --> JWTGen
+    JWTGen --> Response
+    Response --> PersistToken
+    PersistToken --> ReduxState
+    ReduxState --> NavDashboard
